@@ -47,6 +47,11 @@ float testWaveTable()
     return texelFetch(waveTable, tableIndex).x;
 }
 
+float rand(vec2 co)
+{
+    return fract(sin(dot(co.xy, vec2(12.9898,78.233))) * 43758.5453);
+}
+
 float waveTableOsc(float frequency)
 {
     int     frecInt     = int(frequency);
@@ -64,5 +69,12 @@ float waveTableOsc(float frequency)
 
 void main()
 {
-    sampleValue = waveTableOsc(TEST_FREQUENCY);
+    float value = 0.0;
+    const float count = 64.0;
+    for (int i = 0; i < int(count); ++i)
+    {
+        value += waveTableOsc(TEST_FREQUENCY + TEST_FREQUENCY * floor(10 * rand(vec2(0.1, float(i) / count))));
+    }
+    
+    sampleValue = value / count;
 }
