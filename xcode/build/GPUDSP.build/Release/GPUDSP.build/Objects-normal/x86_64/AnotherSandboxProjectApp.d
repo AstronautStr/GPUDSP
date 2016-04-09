@@ -1,7 +1,5 @@
 dependencies: /Users/Astronaut/GPUDSP/src/AnotherSandboxProjectApp.cpp \
   ../../cinder_0.9.0_mac/include/cinder/app/RendererGl.h \
-  /Users/Astronaut/GPUDSP/src/DSPOpenCL.h \
-  ../../cinder_0.9.0_mac/include/cinder/app/cocoa/PlatformCocoa.h \
   ../../cinder_0.9.0_mac/include/cinder/audio/audio.h \
   ../../cinder_0.9.0_mac/include/cinder/audio/Buffer.h \
   ../../cinder_0.9.0_mac/include/cinder/audio/Context.h \
@@ -34,4 +32,6 @@ dependencies: /Users/Astronaut/GPUDSP/src/AnotherSandboxProjectApp.cpp \
   ../../cinder_0.9.0_mac/include/cinder/audio/SampleRecorderNode.h \
   ../../cinder_0.9.0_mac/include/cinder/audio/dsp/Converter.h \
   ../../cinder_0.9.0_mac/include/cinder/audio/dsp/Fft.h \
+  /Users/Astronaut/GPUDSP/src/DSPOpenCL.h \
+  ../../cinder_0.9.0_mac/include/cinder/app/cocoa/PlatformCocoa.h \
   /Users/Astronaut/GPUDSP/src/UnsafeRingBuffer.h
