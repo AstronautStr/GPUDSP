@@ -10,12 +10,12 @@
             ignoreCount = "0"
             continueAfterRunningActions = "No"
             filePath = "../src/AnotherSandboxProjectApp.cpp"
-            timestampString = "481847394.354718"
+            timestampString = "481924564.965914"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "80"
-            endingLineNumber = "80"
-            landmarkName = "AnotherSandboxProjectApp::setup()"
+            startingLineNumber = "84"
+            endingLineNumber = "84"
+            landmarkName = "AnotherSandboxProjectApp::~AnotherSandboxProjectApp()"
             landmarkType = "5">
          </BreakpointContent>
       </BreakpointProxy>
@@ -26,12 +26,12 @@
             ignoreCount = "0"
             continueAfterRunningActions = "No"
             filePath = "../src/AnotherSandboxProjectApp.cpp"
-            timestampString = "481847394.354718"
+            timestampString = "481924564.965914"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "112"
-            endingLineNumber = "112"
-            landmarkName = "AnotherSandboxProjectApp::update()"
+            startingLineNumber = "116"
+            endingLineNumber = "116"
+            landmarkName = "AnotherSandboxProjectApp::mouseDown( MouseEvent event )"
             landmarkType = "5">
          </BreakpointContent>
       </BreakpointProxy>
@@ -42,12 +42,28 @@
             ignoreCount = "0"
             continueAfterRunningActions = "No"
             filePath = "../src/DSPOpenCL.h"
-            timestampString = "481850250.44519"
+            timestampString = "481924564.965914"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "217"
-            endingLineNumber = "217"
-            landmarkName = "_prepareKernel()"
+            startingLineNumber = "295"
+            endingLineNumber = "295"
+            landmarkName = "_prepareKernel(cl_kernel* kernelPtr, const std::string&amp; sourceFile)"
+            landmarkType = "5">
+         </BreakpointContent>
+      </BreakpointProxy>
+      <BreakpointProxy
+         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
+         <BreakpointContent
+            shouldBeEnabled = "No"
+            ignoreCount = "0"
+            continueAfterRunningActions = "No"
+            filePath = "../src/DSPOpenCL.h"
+            timestampString = "481924564.965914"
+            startingColumnNumber = "9223372036854775807"
+            endingColumnNumber = "9223372036854775807"
+            startingLineNumber = "406"
+            endingLineNumber = "406"
+            landmarkName = "generateSamples(float* data = NULL)"
             landmarkType = "5">
          </BreakpointContent>
       </BreakpointProxy>

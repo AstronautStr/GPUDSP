@@ -5,6 +5,8 @@
 #define UNSAFEBUFFER 1
 #define OPENCL 1
 
+#define FIXEDBUFFER 1
+
 #if OPENCL
 #include "DSPOpenCL.h"
 #else
@@ -31,9 +33,10 @@ public:
     
     void process(audio::Buffer* buffer)
     {
+#if FIXEDBUFFER
         _controller->generateSamples(buffer->getData());
         return;
-        
+#else
         if (_ringBuffer)
         {
             float* data = buffer->getData();
@@ -49,6 +52,7 @@ public:
 #endif
             
         }
+#endif
     }
 };
 typedef std::shared_ptr<class ExternalDSPNode> ExternalDSPNodeRef;
@@ -115,7 +119,9 @@ void AnotherSandboxProjectApp::mouseDown( MouseEvent event )
 
 void AnotherSandboxProjectApp::update()
 {
-    //_DSPController->generateSamples();
+#if !FIXEDBUFFER
+    _DSPController->generateSamples();
+#endif
 }
 
 void AnotherSandboxProjectApp::draw()

@@ -20,6 +20,7 @@
 		8D11072F0486CEB800E47090 /* Cocoa.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1058C7A1FEA54F0111CA2CBB /* Cocoa.framework */; };
 		A5C7A54571DB45D4B0A16301 /* AnotherSandboxProjectApp.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B047D374157445ADA0A0FA2E /* AnotherSandboxProjectApp.cpp */; };
 		B6232EC3FD3944A1A51CCA06 /* CinderApp.icns in Resources */ = {isa = PBXBuildFile; fileRef = 86B8F808E6FE41A5AC73B040 /* CinderApp.icns */; };
+		CF130A2B1CB91E240033B9D5 /* Cells.ncl in Resources */ = {isa = PBXBuildFile; fileRef = CF130A2A1CB91E240033B9D5 /* Cells.ncl */; };
 		CF3A42DE1CB80F15007A919F /* Processing.ncl in Sources */ = {isa = PBXBuildFile; fileRef = CF3A42DD1CB80F15007A919F /* Processing.ncl */; };
 		CF3A42E01CB812F9007A919F /* OpenCL.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = CF3A42DF1CB812F9007A919F /* OpenCL.framework */; };
 		CF6F55131CB875AB00CDA918 /* Processing.ncl in Resources */ = {isa = PBXBuildFile; fileRef = CF3A42DD1CB80F15007A919F /* Processing.ncl */; };
@@ -42,9 +43,10 @@
 		29B97325FDCFA39411CA2CEA /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = /System/Library/Frameworks/Foundation.framework; sourceTree = "<absolute>"; };
 		5323E6B10EAFCA74003A9687 /* CoreVideo.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreVideo.framework; path = /System/Library/Frameworks/CoreVideo.framework; sourceTree = "<absolute>"; };
 		86B8F808E6FE41A5AC73B040 /* CinderApp.icns */ = {isa = PBXFileReference; lastKnownFileType = image.icns; name = CinderApp.icns; path = ../resources/CinderApp.icns; sourceTree = "<group>"; };
-		8D1107320486CEB800E47090 /* AnotherSandboxProject.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = AnotherSandboxProject.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		8D1107320486CEB800E47090 /* GPUDSP.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = GPUDSP.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		B047D374157445ADA0A0FA2E /* AnotherSandboxProjectApp.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.cpp; name = AnotherSandboxProjectApp.cpp; path = ../src/AnotherSandboxProjectApp.cpp; sourceTree = "<group>"; };
-		CF3A42DD1CB80F15007A919F /* Processing.ncl */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; name = Processing.ncl; path = ../src/Processing.ncl; sourceTree = "<group>"; };
+		CF130A2A1CB91E240033B9D5 /* Cells.ncl */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; name = Cells.ncl; path = ../src/Cells.ncl; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.opencl; };
+		CF3A42DD1CB80F15007A919F /* Processing.ncl */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; name = Processing.ncl; path = ../src/Processing.ncl; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.opencl; };
 		CF3A42DF1CB812F9007A919F /* OpenCL.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = OpenCL.framework; path = System/Library/Frameworks/OpenCL.framework; sourceTree = SDKROOT; };
 		CF6F550D1CB8408700CDA918 /* DSPOpenGL.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = DSPOpenGL.h; path = ../src/DSPOpenGL.h; sourceTree = "<group>"; };
 		CF6F550E1CB8408700CDA918 /* UnsafeRingBuffer.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = UnsafeRingBuffer.h; path = ../src/UnsafeRingBuffer.h; sourceTree = "<group>"; };
@@ -92,6 +94,7 @@
 				CF6F550E1CB8408700CDA918 /* UnsafeRingBuffer.h */,
 				B047D374157445ADA0A0FA2E /* AnotherSandboxProjectApp.cpp */,
 				CFFF93CF1CB5477D00B3376C /* GPUDSP.vert */,
+				CF130A2A1CB91E240033B9D5 /* Cells.ncl */,
 				CF3A42DD1CB80F15007A919F /* Processing.ncl */,
 			);
 			name = Source;
@@ -127,7 +130,7 @@
 		19C28FACFE9D520D11CA2CBB /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				8D1107320486CEB800E47090 /* AnotherSandboxProject.app */,
+				8D1107320486CEB800E47090 /* GPUDSP.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -191,7 +194,7 @@
 			name = GPUDSP;
 			productInstallPath = "$(HOME)/Applications";
 			productName = AnotherSandboxProject;
-			productReference = 8D1107320486CEB800E47090 /* AnotherSandboxProject.app */;
+			productReference = 8D1107320486CEB800E47090 /* GPUDSP.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -228,6 +231,7 @@
 				CF6F55131CB875AB00CDA918 /* Processing.ncl in Resources */,
 				B6232EC3FD3944A1A51CCA06 /* CinderApp.icns in Resources */,
 				CFFF93D01CB5477D00B3376C /* GPUDSP.vert in Resources */,
+				CF130A2B1CB91E240033B9D5 /* Cells.ncl in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
