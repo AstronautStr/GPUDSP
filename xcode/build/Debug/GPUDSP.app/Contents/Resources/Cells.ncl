@@ -84,10 +84,10 @@ __kernel void kernelMain(__global float* samples, __global float* waveTable, uin
         
         float deltaSign = -1.0f;
         float deltaValue = 1.0f / (float)sampleRate;
-        const float rulesBirthCenter = rand((float2)(0.1f, (float)(samplesProcessed / sampleRate)));
+        const float rulesBirthCenter = rand((float2)(0.11f, (float)(samplesProcessed / sampleRate)));
         const float rulesBirthRadius = rand((float2)(0.35f, (float)(samplesProcessed / sampleRate)));
-        const float rulesKeepCenter = rand((float2)(0.7f, (float)(samplesProcessed / sampleRate)));
-        const float rulesKeepRadius = rand((float2)(0.55f, (float)(samplesProcessed / sampleRate)));
+        const float rulesKeepCenter = rand((float2)(0.74f, (float)(samplesProcessed / sampleRate)));
+        const float rulesKeepRadius = rand((float2)(0.3f, (float)(samplesProcessed / sampleRate)));
         
         if (sum >= rulesBirthCenter - rulesBirthRadius && sum <= rulesBirthCenter + rulesBirthRadius)
             deltaSign = 1.0f;

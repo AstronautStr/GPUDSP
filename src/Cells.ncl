@@ -40,7 +40,7 @@ float rand(float2 co)
     return fract(sin(dot(co.xy, (float2)(12.9898f, 78.233f))) * 43758.5453f, &value);
 }
 
-__kernel void kernelMain(__global float* samples, __global float* waveTable, uint sampleRate, uint samplesProcessed, uint bufferSize, __global int* mutex, __global float4* cells, __global float4* cellsNew, uint2 gridSize)
+__kernel void kernelMain(__global float* samples, __global float* waveTable, uint sampleRate, uint samplesProcessed, uint bufferSize, __global float4* cells, __global float4 rules, uint2 gridSize)
 {
     // cells is gridSize.x * gridSize.y * bufferSize length
     uint globalID = get_global_id(0);
@@ -84,10 +84,10 @@ __kernel void kernelMain(__global float* samples, __global float* waveTable, uin
         
         float deltaSign = -1.0f;
         float deltaValue = 1.0f / (float)sampleRate;
-        const float rulesBirthCenter = rand((float2)(0.11f, (float)(samplesProcessed / sampleRate)));
-        const float rulesBirthRadius = rand((float2)(0.35f, (float)(samplesProcessed / sampleRate)));
-        const float rulesKeepCenter = rand((float2)(0.74f, (float)(samplesProcessed / sampleRate)));
-        const float rulesKeepRadius = rand((float2)(0.3f, (float)(samplesProcessed / sampleRate)));
+        const float rulesBirthCenter = rules.x;
+        const float rulesBirthRadius = rules.y;
+        const float rulesKeepCenter = rules.z;
+        const float rulesKeepRadius = rules.w;
         
         if (sum >= rulesBirthCenter - rulesBirthRadius && sum <= rulesBirthCenter + rulesBirthRadius)
             deltaSign = 1.0f;

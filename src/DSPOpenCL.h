@@ -25,7 +25,7 @@ typedef ci::audio::dsp::RingBufferT<SampleValueType> RingBuffer;
 
 class DSPOpenCL
 {
-protected:
+private:
     std::string readAllText(std::string const& path)
     {
         std::ifstream ifstr(path);
@@ -121,6 +121,8 @@ protected:
 #endif
     }
     
+    
+protected:
     cl_device_id        deviceID;
     cl_context          context;
     cl_command_queue    commandQueue;
@@ -129,178 +131,26 @@ protected:
     cl_kernel           cellsKernel;
     cl_kernel           soundKernel;
     
-    SampleValueType*    waveTable;
     SampleValueType*    samples;
-    
     cl_mem              samplesMemoryObj;
     size_t              samplesMemoryLength;
     
+    SampleValueType*    waveTable;
     cl_mem              waveTableMemoryObj;
     size_t              waveTableMemoryLength;
     
-    cl_mem              mutexMemoryObj;
-    
-    cl_mem              cellsMemoryObj;
-    size_t              cellsMemoryLength;
     cl_float4*          cells;
     size_t              cellsCount;
-    
-    cl_mem              cellsNewMemoryObj;
-    cl_float4*          cellsNew;
-    
+    cl_mem              cellsMemoryObj;
+    size_t              cellsMemoryLength;
+
+    cl_float4           rules;
     cl_uint2            gridSize;
     
     cl_uint             samplesProcessed;
     cl_uint             sampleRate;
-    cl_uint             samplesInBuffer;
+    cl_uint             samplesToWrite;
     size_t              bufferSize;
-    
-    
-    size_t _getBufferSize()
-    {
-        return bufferSize;
-    }
-    
-    size_t _getBufferToWrite()
-    {
-#if FIXEDBUFFER
-        return bufferSize;
-#else
-        return RingBuffer.getAvailableWrite();
-#endif
-    }
-    
-    static float getRandFreq(bool harm = false)
-    {
-        float min = 20.0;
-        float max = 22000.0;
-        if (harm)
-            return 60.0 * (1 + rand() % 20);
-        else
-            return pow(2.0, (log2(min) + (log2(max) - log2(min)) * ((double)rand() / RAND_MAX)));
-    }
-    
-    void _setupKernelVars(cl_kernel targetKernel)
-    {
-        cl_int ret = clSetKernelArg(targetKernel, 0, sizeof(cl_mem), (void*)&samplesMemoryObj);
-        logErrorString(ret);
-        ret = clSetKernelArg(targetKernel, 1, sizeof(cl_mem), (void*)&waveTableMemoryObj);
-        logErrorString(ret);
-        ret = clSetKernelArg(targetKernel, 2, sizeof(cl_uint), (void*)&sampleRate);
-        logErrorString(ret);
-        ret = clSetKernelArg(targetKernel, 3, sizeof(cl_uint), (void*)&samplesProcessed);
-        logErrorString(ret);
-        ret = clSetKernelArg(targetKernel, 4, sizeof(cl_uint), (void*)&samplesInBuffer);
-        logErrorString(ret);
-        ret = clSetKernelArg(targetKernel, 5, sizeof(cl_mem), (void*)&mutexMemoryObj);
-        logErrorString(ret);
-        ret = clSetKernelArg(targetKernel, 6, sizeof(cl_mem), (void*)&cellsMemoryObj);
-        logErrorString(ret);
-        ret = clSetKernelArg(targetKernel, 7, sizeof(cl_mem), (void*)&cellsNewMemoryObj);
-        logErrorString(ret);
-        ret = clSetKernelArg(targetKernel, 8, sizeof(cl_uint2), (void*)&gridSize);
-        logErrorString(ret);
-    }
-    
-    void _prepareMemory()
-    {
-        cl_int ret = 0;
-        samplesMemoryObj = NULL;
-        samplesMemoryLength = _getBufferSize();
-        
-        samples = new SampleValueType[samplesMemoryLength];
-        for (int i = 0; i < samplesMemoryLength; ++i)
-            samples[i] = 0;
-        
-        samplesMemoryObj = clCreateBuffer(context, CL_MEM_READ_WRITE, samplesMemoryLength * sizeof(SampleValueType), NULL, &ret);
-        logErrorString(ret);
-        ret = clEnqueueWriteBuffer(commandQueue, samplesMemoryObj, CL_TRUE, 0, samplesMemoryLength * sizeof(SampleValueType), samples, 0, NULL, NULL);
-        logErrorString(ret);
-        
-        
-        waveTableMemoryObj = NULL;
-        waveTableMemoryLength = sampleRate;
-        
-        waveTable = new SampleValueType[waveTableMemoryLength];
-        for (int i = 0; i < sampleRate; ++i)
-            waveTable[i] = (float)(sin(2.0 * M_PI * (double)i / (double)sampleRate));
-
-
-        waveTableMemoryObj = clCreateBuffer(context, CL_MEM_READ_WRITE, waveTableMemoryLength * sizeof(SampleValueType), NULL, &ret);
-        logErrorString(ret);
-        ret = clEnqueueWriteBuffer(commandQueue, waveTableMemoryObj, CL_TRUE, 0, waveTableMemoryLength * sizeof(SampleValueType), waveTable, 0, NULL, NULL);
-        logErrorString(ret);
-        
-        mutexMemoryObj = clCreateBuffer(context, CL_MEM_READ_WRITE, sizeof(cl_int), NULL, &ret);
-        logErrorString(ret);
-        int mutexInit[1] = { 0 };
-        ret = clEnqueueWriteBuffer(commandQueue, mutexMemoryObj, CL_TRUE, 0, sizeof(cl_int), &mutexInit[0], 0, NULL, NULL);
-        logErrorString(ret);
-        
-        gridSize = { 16, 16 };
-        cellsCount = gridSize.s[0] * gridSize.s[1];
-        cellsMemoryLength = cellsCount * _getBufferSize();
-        
-        srand(time(0));
-        cells = new cl_float4[cellsMemoryLength];
-        cellsNew = new cl_float4[cellsMemoryLength];
-        for (int i = 0; i < cellsMemoryLength; ++i)
-        {
-            for (int j = 0; j < 4; ++j)
-            {
-                cells[i].s[j] = 0.0;
-                cellsNew[i].s[j] = 0.0;
-            }
-        }
-        
-        for (int i = 0; i < cellsCount; ++i)
-        {
-            cells[i].s[0] = (float)rand() / RAND_MAX;
-            cells[i].s[1] = getRandFreq(true);
-        }
-        
-        cellsMemoryObj = clCreateBuffer(context, CL_MEM_READ_WRITE, cellsMemoryLength * sizeof(cl_float4), NULL, &ret);
-        logErrorString(ret);
-        ret = clEnqueueWriteBuffer(commandQueue, cellsMemoryObj, CL_TRUE, 0, cellsMemoryLength * sizeof(cl_float4), cells, 0, NULL, NULL);
-        logErrorString(ret);
-        
-        cellsNewMemoryObj = clCreateBuffer(context, CL_MEM_READ_WRITE, cellsMemoryLength * sizeof(cl_float4), NULL, &ret);
-        logErrorString(ret);
-        ret = clEnqueueWriteBuffer(commandQueue, cellsNewMemoryObj, CL_TRUE, 0, cellsMemoryLength * sizeof(cl_float4), cellsNew, 0, NULL, NULL);
-        logErrorString(ret);
-        
-        _setupKernelVars(cellsKernel);
-        _setupKernelVars(soundKernel);
-    }
-    
-    void _prepareKernel(cl_kernel* kernelPtr, const std::string& sourceFile)
-    {
-        program = NULL;
-        *kernelPtr = NULL;
-        cl_int ret = 0;
-        
-        std::string clSrcString = readAllText(cinder::app::PlatformCocoa::get()->getResourcePath(sourceFile).string());
-        const char* str = clSrcString.c_str();
-        size_t sourceSize = clSrcString.length();
-        
-        program = clCreateProgramWithSource(context, 1, &str, &sourceSize, &ret);
-        logErrorString(ret);
-
-        ret = clBuildProgram(program, 1, &deviceID, NULL, NULL, NULL);
-        logErrorString(ret);
-#if LOGENABLED
-        size_t len = 0;
-        clGetProgramBuildInfo(program, deviceID, CL_PROGRAM_BUILD_LOG, NULL, NULL, &len);
-        char* log = new char[len];
-        clGetProgramBuildInfo(program, deviceID, CL_PROGRAM_BUILD_LOG, len, log, NULL);
-        std::cerr << log << std::endl;
-        delete [] log;
-#endif
-        *kernelPtr = clCreateKernel(program, "kernelMain", &ret);
-        logErrorString(ret);
-        
-        clReleaseProgram(program);
-    }
     
     void _prepareContext()
     {
@@ -315,9 +165,131 @@ protected:
         
         context = clCreateContext(NULL, 1, &deviceID, NULL, NULL, &ret);
         logErrorString(ret);
-
+        
         commandQueue = clCreateCommandQueue(context, deviceID, 0, &ret);
         logErrorString(ret);
+    }
+    
+    void _prepareKernel(cl_kernel* kernelPtr, const std::string& sourceFile)
+    {
+        cl_int ret = 0;
+        program = NULL;
+        *kernelPtr = NULL;
+        
+        std::string clSrcString = readAllText(cinder::app::PlatformCocoa::get()->getResourcePath(sourceFile).string());
+        const char* str = clSrcString.c_str();
+        size_t sourceSize = clSrcString.length();
+        
+        program = clCreateProgramWithSource(context, 1, &str, &sourceSize, &ret);
+        logErrorString(ret);
+        ret = clBuildProgram(program, 1, &deviceID, NULL, NULL, NULL);
+        logErrorString(ret);
+        
+#if LOGENABLED
+        size_t len = 0;
+        clGetProgramBuildInfo(program, deviceID, CL_PROGRAM_BUILD_LOG, NULL, NULL, &len);
+        char* log = new char[len];
+        clGetProgramBuildInfo(program, deviceID, CL_PROGRAM_BUILD_LOG, len, log, NULL);
+        std::cerr << log << std::endl;
+        delete [] log;
+#endif
+        
+        *kernelPtr = clCreateKernel(program, "kernelMain", &ret);
+        logErrorString(ret);
+        
+        clReleaseProgram(program);
+    }
+    
+    void _setupKernelVars(cl_kernel targetKernel)
+    {
+        cl_int ret = clSetKernelArg(targetKernel, 0, sizeof(cl_mem), (void*)&samplesMemoryObj);
+        logErrorString(ret);
+        ret = clSetKernelArg(targetKernel, 1, sizeof(cl_mem), (void*)&waveTableMemoryObj);
+        logErrorString(ret);
+        ret = clSetKernelArg(targetKernel, 2, sizeof(cl_uint), (void*)&sampleRate);
+        logErrorString(ret);
+        ret = clSetKernelArg(targetKernel, 3, sizeof(cl_uint), (void*)&samplesProcessed);
+        logErrorString(ret);
+        ret = clSetKernelArg(targetKernel, 4, sizeof(cl_uint), (void*)&samplesToWrite);
+        logErrorString(ret);
+        ret = clSetKernelArg(targetKernel, 5, sizeof(cl_mem), (void*)&cellsMemoryObj);
+        logErrorString(ret);
+        ret = clSetKernelArg(targetKernel, 6, sizeof(cl_float4), (void*)&rules);
+        logErrorString(ret);
+        ret = clSetKernelArg(targetKernel, 7, sizeof(cl_uint2), (void*)&gridSize);
+        logErrorString(ret);
+    }
+    
+    void _prepareMemory()
+    {
+        cl_int ret = 0;
+        srand(time(0));
+        
+        // samples
+        samplesMemoryObj = NULL;
+        samplesMemoryLength = _getBufferSize();
+        samples = new SampleValueType[samplesMemoryLength];
+        for (int i = 0; i < samplesMemoryLength; ++i)
+            samples[i] = 0;
+        samplesMemoryObj = clCreateBuffer(context, CL_MEM_READ_WRITE, samplesMemoryLength * sizeof(SampleValueType), NULL, &ret);
+        logErrorString(ret);
+        ret = clEnqueueWriteBuffer(commandQueue, samplesMemoryObj, CL_TRUE, 0, samplesMemoryLength * sizeof(SampleValueType), samples, 0, NULL, NULL);
+        logErrorString(ret);
+        
+        // wavetable
+        waveTableMemoryObj = NULL;
+        waveTableMemoryLength = sampleRate;
+        waveTable = new SampleValueType[waveTableMemoryLength];
+        for (int i = 0; i < sampleRate; ++i)
+            waveTable[i] = (float)(sin(2.0 * M_PI * (double)i / (double)sampleRate));
+        waveTableMemoryObj = clCreateBuffer(context, CL_MEM_READ_WRITE, waveTableMemoryLength * sizeof(SampleValueType), NULL, &ret);
+        logErrorString(ret);
+        ret = clEnqueueWriteBuffer(commandQueue, waveTableMemoryObj, CL_TRUE, 0, waveTableMemoryLength * sizeof(SampleValueType), waveTable, 0, NULL, NULL);
+        logErrorString(ret);
+        
+        // cells
+        gridSize = { 16, 16 };
+        cellsCount = gridSize.s[0] * gridSize.s[1];
+        cellsMemoryLength = cellsCount * _getBufferSize();
+        cells = new cl_float4[cellsMemoryLength];
+        for (int i = 0; i < cellsMemoryLength; ++i)
+            for (int j = 0; j < 4; ++j)
+                cells[i].s[j] = 0.0;
+        
+        cellsMemoryObj = clCreateBuffer(context, CL_MEM_READ_WRITE, cellsMemoryLength * sizeof(cl_float4), NULL, &ret);
+        logErrorString(ret);
+        ret = clEnqueueWriteBuffer(commandQueue, cellsMemoryObj, CL_TRUE, 0, cellsMemoryLength * sizeof(cl_float4), cells, 0, NULL, NULL);
+        logErrorString(ret);
+        
+        _setupKernelVars(cellsKernel);
+        _setupKernelVars(soundKernel);
+    }
+    
+    size_t _getBufferSize()
+    {
+        return bufferSize;
+    }
+    
+    size_t _getBufferToWrite()
+    {
+#if FIXEDBUFFER
+        return bufferSize;
+#else
+        return RingBuffer.getAvailableWrite();
+#endif
+    }
+
+    void _updateSamplesProcessed()
+    {
+        clSetKernelArg(cellsKernel, 3, sizeof(cl_uint), (void*)&samplesProcessed);
+        clSetKernelArg(soundKernel, 3, sizeof(cl_uint), (void*)&samplesProcessed);
+    }
+    
+    void _updateSamplesToWrite(size_t newValue)
+    {
+        samplesToWrite = (cl_uint)newValue;
+        clSetKernelArg(cellsKernel, 4, sizeof(cl_uint), (void*)&samplesToWrite);
+        clSetKernelArg(soundKernel, 4, sizeof(cl_uint), (void*)&samplesToWrite);
     }
     
 public:
@@ -329,7 +301,7 @@ public:
         this->samplesProcessed = 0;
         this->sampleRate = (cl_uint)sampleRate;
         this->bufferSize = bufferSize;
-        this->samplesInBuffer = (cl_uint)bufferSize;
+        this->samplesToWrite = (cl_uint)bufferSize;
         
         _prepareContext();
         _prepareKernel(&cellsKernel, "Cells.ncl");
@@ -342,13 +314,11 @@ public:
         delete [] waveTable;
         delete [] samples;
         delete [] cells;
-        delete [] cellsNew;
         
         clReleaseDevice(deviceID);
         clReleaseContext(context);
         clReleaseCommandQueue(commandQueue);
         clReleaseMemObject(cellsMemoryObj);
-        clReleaseMemObject(cellsNewMemoryObj);
         clReleaseMemObject(waveTableMemoryObj);
         clReleaseMemObject(samplesMemoryObj);
         
@@ -358,37 +328,25 @@ public:
     
     void generateSamples(float* data = NULL)
     {
-        cl_int ret = 0;
         size_t toWrite = _getBufferToWrite();
         
         if (toWrite <= 0)
             return;
         
-        
-        ret = clSetKernelArg(cellsKernel, 3, sizeof(cl_uint), (void*)&samplesProcessed);
-        logErrorString(ret);
-        ret = clSetKernelArg(soundKernel, 3, sizeof(cl_uint), (void*)&samplesProcessed);
-        logErrorString(ret);
-        
-        samplesInBuffer = (cl_uint)toWrite;
-        ret = clSetKernelArg(cellsKernel, 4, sizeof(cl_uint), (void*)&samplesInBuffer);
-        logErrorString(ret);
-        ret = clSetKernelArg(soundKernel, 4, sizeof(cl_uint), (void*)&samplesInBuffer);
-        logErrorString(ret);
-        
+        _updateSamplesProcessed();
+        _updateSamplesToWrite(toWrite);
+
         size_t globalWorkSize[1] = { cellsCount };
-        ret = clEnqueueNDRangeKernel(commandQueue, cellsKernel, 1, NULL, globalWorkSize, NULL, 0, NULL, NULL);
-        logErrorString(ret);
+        clEnqueueNDRangeKernel(commandQueue, cellsKernel, 1, NULL, globalWorkSize, NULL, 0, NULL, NULL);
         
         globalWorkSize[0] = toWrite;
-        ret = clEnqueueNDRangeKernel(commandQueue, soundKernel, 1, NULL, globalWorkSize, NULL, 0, NULL, NULL);
-        logErrorString(ret);
+        clEnqueueNDRangeKernel(commandQueue, soundKernel, 1, NULL, globalWorkSize, NULL, 0, NULL, NULL);
+        
 #if LOGENABLED
         bool logHard = true;
         if (logHard)
         {
-            ret = clEnqueueReadBuffer(commandQueue, samplesMemoryObj, CL_TRUE, 0, toWrite * sizeof(SampleValueType), samples, 0, NULL, NULL);
-            logErrorString(ret);
+            clEnqueueReadBuffer(commandQueue, samplesMemoryObj, CL_TRUE, 0, toWrite * sizeof(SampleValueType), samples, 0, NULL, NULL);
             
             int tail = toWrite;
             int radius = 10;
@@ -403,10 +361,10 @@ public:
             }
         }
 #endif
+        
         if (data != NULL)
         {
-            ret = clEnqueueReadBuffer(commandQueue, samplesMemoryObj, CL_TRUE, 0, toWrite * sizeof(SampleValueType), data, 0, NULL, NULL);
-            logErrorString(ret);
+            clEnqueueReadBuffer(commandQueue, samplesMemoryObj, CL_TRUE, 0, toWrite * sizeof(SampleValueType), data, 0, NULL, NULL);
             samplesProcessed += toWrite;
         }
         else
@@ -420,22 +378,17 @@ public:
         RingBuffer.getUnsafeDataWritePointer(toWrite, firstPart, secondPart, firstLength, secondLength);
         if (firstPart != nullptr)
         {
-            ret = clEnqueueReadBuffer(commandQueue, samplesMemoryObj, CL_TRUE, 0, firstLength * sizeof(SampleValueType), firstPart, 0, NULL, NULL);
-            logErrorString(ret);
-            
+            clEnqueueReadBuffer(commandQueue, samplesMemoryObj, CL_TRUE, 0, firstLength * sizeof(SampleValueType), firstPart, 0, NULL, NULL);
             samplesProcessed += firstLength;
             if (secondPart != nullptr)
             {
-                ret = clEnqueueReadBuffer(commandQueue, samplesMemoryObj, CL_TRUE, firstLength * sizeof(SampleValueType), secondLength * sizeof(SampleValueType), secondPart, 0, NULL, NULL);
-                logErrorString(ret);
-                
+                clEnqueueReadBuffer(commandQueue, samplesMemoryObj, CL_TRUE, firstLength * sizeof(SampleValueType), secondLength * sizeof(SampleValueType), secondPart, 0, NULL, NULL);
                 samplesProcessed += secondLength;
             }
             
         }
 #else
-        ret = clEnqueueReadBuffer(commandQueue, samplesMemoryObj, CL_TRUE, 0, toWrite * sizeof(SampleValueType), samples, 0, NULL, NULL);
-        logErrorString(ret);
+        clEnqueueReadBuffer(commandQueue, samplesMemoryObj, CL_TRUE, 0, toWrite * sizeof(SampleValueType), samples, 0, NULL, NULL);
 
         RingBuffer.write(samples, toWrite);
         samplesProcessed += toWrite;
