@@ -33,6 +33,8 @@ dependencies: \
   ../../cinder_0.9.0_mac/include/cinder/audio/SampleRecorderNode.h \
   ../../cinder_0.9.0_mac/include/cinder/audio/dsp/Converter.h \
   ../../cinder_0.9.0_mac/include/cinder/audio/dsp/Fft.h \
+  ../../cinder_0.9.0_mac/include/cinder/params/Params.h \
+  /Users/Astronaut/Documents/Astronaut-git/AnotherSandboxProject/src/Utils.h \
   /Users/Astronaut/Documents/Astronaut-git/AnotherSandboxProject/src/DSPOpenCL.h \
   ../../cinder_0.9.0_mac/include/cinder/app/cocoa/PlatformCocoa.h \
   /Users/Astronaut/Documents/Astronaut-git/AnotherSandboxProject/src/UnsafeRingBuffer.h

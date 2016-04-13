@@ -9,6 +9,7 @@
 #ifndef DSPOpenGL_h
 #define DSPOpenGL_h
 
+#include "Utils.h"
 #include "cinder/gl/gl.h"
 #include "cinder/app/cocoa/PlatformCocoa.h"
 #include "cinder/audio/audio.h"
@@ -47,16 +48,6 @@ private:
     
     size_t _samplesProcessed;
     size_t _sampleRate;
-    
-    std::string readAllText(std::string const& path)
-    {
-        std::ifstream ifstr(path);
-        if (!ifstr)
-            return std::string();
-        std::stringstream text;
-        ifstr >> text.rdbuf();
-        return text.str();
-    }
     
     typedef std::basic_string<GLchar>   GLstring;
     

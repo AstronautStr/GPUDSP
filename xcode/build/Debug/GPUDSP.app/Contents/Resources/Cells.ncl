@@ -6,6 +6,8 @@
 float waveTableOsc(__global float* waveTable, float frequency, uint sampleRate, uint samplesProcessed, uint samplePosition);
 uint ringIndex(int index, uint size);
 uint2 torIndex(int2 index, uint2 size);
+float rand(float2 co);
+float randFreq(float fractTime);
 
 float waveTableOsc(__global float* waveTable, float frequency, uint sampleRate, uint samplesProcessed, uint samplePosition)
 {
@@ -40,7 +42,14 @@ float rand(float2 co)
     return fract(sin(dot(co.xy, (float2)(12.9898f, 78.233f))) * 43758.5453f, &value);
 }
 
-__kernel void kernelMain(__global float* samples, __global float* waveTable, uint sampleRate, uint samplesProcessed, uint bufferSize, __global int* mutex, __global float4* cells, __global float4* cellsNew, uint2 gridSize)
+float randFreq(float fractTime)
+{
+    float min = 20.0f;
+    float max = 22000.0f;
+    return pow(2.0f, (log2(min) + (log2(max) - log2(min)) * rand((float2)(fractTime, 1.3217f))));
+}
+
+__kernel void kernelMain(__global float* samples, __global float* waveTable, uint sampleRate, uint samplesProcessed, uint bufferSize, __global float4* cells, __global float* rules, uint2 gridSize)
 {
     // cells is gridSize.x * gridSize.y * bufferSize length
     uint globalID = get_global_id(0);
@@ -83,11 +92,11 @@ __kernel void kernelMain(__global float* samples, __global float* waveTable, uin
         }
         
         float deltaSign = -1.0f;
-        float deltaValue = 1.0f / (float)sampleRate;
-        const float rulesBirthCenter = rand((float2)(0.11f, (float)(samplesProcessed / sampleRate)));
-        const float rulesBirthRadius = rand((float2)(0.35f, (float)(samplesProcessed / sampleRate)));
-        const float rulesKeepCenter = rand((float2)(0.74f, (float)(samplesProcessed / sampleRate)));
-        const float rulesKeepRadius = rand((float2)(0.3f, (float)(samplesProcessed / sampleRate)));
+        float deltaValue = rules[4] / (float)sampleRate;
+        float rulesBirthCenter = rules[0];
+        float rulesBirthRadius = rules[1];
+        float rulesKeepCenter = rules[2];
+        float rulesKeepRadius = rules[3];
         
         if (sum >= rulesBirthCenter - rulesBirthRadius && sum <= rulesBirthCenter + rulesBirthRadius)
             deltaSign = 1.0f;
@@ -96,7 +105,11 @@ __kernel void kernelMain(__global float* samples, __global float* waveTable, uin
         
         int cellNextStepIndex = globalID + ((sampleIdx + 1) % bufferSize) * gridSize.x * gridSize.y;
 
-        cells[cellNextStepIndex].x = clamp(cell.x + deltaValue * deltaSign, 0.0f, 1.0f);
-        cells[cellNextStepIndex].y = cell.y;
+        float newAmp = clamp(cell.x + deltaValue * deltaSign, 0.0f, 1.0f);
+        float randFreqMask = floor(1.0f - newAmp);
+        cells[cellNextStepIndex].x = newAmp;
+        cells[cellNextStepIndex].y = cell.y * (1 - randFreqMask) + randFreq((float)((samplesProcessed % sampleRate + sampleIdx) % sampleRate) / (float)sampleRate) * randFreqMask;
+        
+        barrier(CLK_GLOBAL_MEM_FENCE);
     }
 }

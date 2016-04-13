@@ -9,10 +9,12 @@
 #ifndef DSPOpenCL_h
 #define DSPOpenCL_h
 
+#include "Utils.h"
 #include <OpenCL/OpenCL.h>
 #include "cinder/app/cocoa/PlatformCocoa.h"
 
 typedef cl_float SampleValueType;
+typedef cl_float4 SampleValue4Type;
 
 #if UNSAFEBUFFER
 #include "UnsafeRingBuffer.h"
@@ -25,17 +27,7 @@ typedef ci::audio::dsp::RingBufferT<SampleValueType> RingBuffer;
 
 class DSPOpenCL
 {
-private:
-    std::string readAllText(std::string const& path)
-    {
-        std::ifstream ifstr(path);
-        if (!ifstr)
-            return std::string();
-        std::stringstream text;
-        ifstr >> text.rdbuf();
-        return text.str();
-    }
-    
+private:    
     const char* getErrorString(cl_int error)
     {
         switch(error)
@@ -139,12 +131,15 @@ protected:
     cl_mem              waveTableMemoryObj;
     size_t              waveTableMemoryLength;
     
-    cl_float4*          cells;
+    SampleValue4Type*   cells;
     size_t              cellsCount;
     cl_mem              cellsMemoryObj;
     size_t              cellsMemoryLength;
 
-    cl_float4           rules;
+    cl_mem              rulesMemoryObject;
+    size_t              rulesMemoryLength;
+    cl_float*           rules;
+    
     cl_uint2            gridSize;
     
     cl_uint             samplesProcessed;
@@ -214,7 +209,7 @@ protected:
         logErrorString(ret);
         ret = clSetKernelArg(targetKernel, 5, sizeof(cl_mem), (void*)&cellsMemoryObj);
         logErrorString(ret);
-        ret = clSetKernelArg(targetKernel, 6, sizeof(cl_float4), (void*)&rules);
+        ret = clSetKernelArg(targetKernel, 6, sizeof(cl_mem), (void*)&rulesMemoryObject);
         logErrorString(ret);
         ret = clSetKernelArg(targetKernel, 7, sizeof(cl_uint2), (void*)&gridSize);
         logErrorString(ret);
@@ -227,7 +222,7 @@ protected:
         
         // samples
         samplesMemoryObj = NULL;
-        samplesMemoryLength = _getBufferSize();
+        samplesMemoryLength = bufferSize;
         samples = new SampleValueType[samplesMemoryLength];
         for (int i = 0; i < samplesMemoryLength; ++i)
             samples[i] = 0;
@@ -247,28 +242,49 @@ protected:
         ret = clEnqueueWriteBuffer(commandQueue, waveTableMemoryObj, CL_TRUE, 0, waveTableMemoryLength * sizeof(SampleValueType), waveTable, 0, NULL, NULL);
         logErrorString(ret);
         
+        rulesMemoryObject = NULL;
+        rulesMemoryLength = 5;
+        rules = new cl_float[rulesMemoryLength];
+        rules[0] = 0.5f;
+        rules[1] = 0.1f;
+        rules[2] = 0.4f;
+        rules[3] = 0.05f;
+        rules[4] = 1.0f;
+        rulesMemoryObject = clCreateBuffer(context, CL_MEM_READ_WRITE, rulesMemoryLength * sizeof(cl_float), NULL, &ret);
+        logErrorString(ret);
+        ret = clEnqueueWriteBuffer(commandQueue, rulesMemoryObject, CL_TRUE, 0, rulesMemoryLength * sizeof(cl_float), rules, 0, NULL, NULL);
+        logErrorString(ret);
+        
         // cells
         gridSize = { 16, 16 };
         cellsCount = gridSize.s[0] * gridSize.s[1];
-        cellsMemoryLength = cellsCount * _getBufferSize();
-        cells = new cl_float4[cellsMemoryLength];
+        cellsMemoryLength = cellsCount * bufferSize;
+        cells = new SampleValue4Type[cellsMemoryLength];
+        DefferedUpdateGrid = new SampleValue4Type[cellsCount];
         for (int i = 0; i < cellsMemoryLength; ++i)
+        {
             for (int j = 0; j < 4; ++j)
+            {
                 cells[i].s[j] = 0.0;
+                DefferedUpdateGrid[i % cellsCount].s[j] = 0.0;
+            }
+        }
         
-        cellsMemoryObj = clCreateBuffer(context, CL_MEM_READ_WRITE, cellsMemoryLength * sizeof(cl_float4), NULL, &ret);
+        for (int i = 0; i < cellsCount; ++i)
+        {
+            cells[i].s[0] = randAmp();
+            cells[i].s[1] = randFreq();
+        }
+        
+        cellsMemoryObj = clCreateBuffer(context, CL_MEM_READ_WRITE, cellsMemoryLength * sizeof(SampleValue4Type), NULL, &ret);
         logErrorString(ret);
-        ret = clEnqueueWriteBuffer(commandQueue, cellsMemoryObj, CL_TRUE, 0, cellsMemoryLength * sizeof(cl_float4), cells, 0, NULL, NULL);
+        ret = clEnqueueWriteBuffer(commandQueue, cellsMemoryObj, CL_TRUE, 0, cellsMemoryLength * sizeof(SampleValue4Type), cells, 0, NULL, NULL);
         logErrorString(ret);
         
         _setupKernelVars(cellsKernel);
         _setupKernelVars(soundKernel);
     }
-    
-    size_t _getBufferSize()
-    {
-        return bufferSize;
-    }
+
     
     size_t _getBufferToWrite()
     {
@@ -292,16 +308,34 @@ protected:
         clSetKernelArg(soundKernel, 4, sizeof(cl_uint), (void*)&samplesToWrite);
     }
     
+    void _applyDefferedUpdateGrid()
+    {
+        for (int i = 0; i < cellsCount; ++i)
+        {
+            float replaceMask = DefferedUpdateGrid[i].s[0] > 0.0f ? 1.0f : 0.0f;
+            float clearMask = DefferedUpdateGrid[i].s[0] < 0.0f ? 1.0f : 0.0f;
+            
+            for (int j = 0; j < 4; ++j)
+            {
+                cells[i].s[j] = (replaceMask * DefferedUpdateGrid[i].s[j] + (1.0f - replaceMask) * cells[i].s[j]) * (1.0f - clearMask);
+                DefferedUpdateGrid[i].s[j] = 0.0f;
+            }
+        }
+        
+        clEnqueueWriteBuffer(commandQueue, cellsMemoryObj, CL_TRUE, 0, cellsCount * sizeof(SampleValue4Type), cells, 0, NULL, NULL);
+    }
+    
 public:
     RingBuffer RingBuffer;
+    SampleValue4Type*   DefferedUpdateGrid;
     
-    DSPOpenCL(size_t sampleRate, size_t bufferSize) :
-    RingBuffer(bufferSize)
+    DSPOpenCL(size_t initSampleRate, size_t initBufferSize) :
+    RingBuffer(initBufferSize)
     {
         this->samplesProcessed = 0;
-        this->sampleRate = (cl_uint)sampleRate;
-        this->bufferSize = bufferSize;
-        this->samplesToWrite = (cl_uint)bufferSize;
+        this->sampleRate = (cl_uint)initSampleRate;
+        this->bufferSize = initBufferSize;
+        this->samplesToWrite = (cl_uint)initBufferSize;
         
         _prepareContext();
         _prepareKernel(&cellsKernel, "Cells.ncl");
@@ -309,11 +343,33 @@ public:
         _prepareMemory();
     }
     
+    float* getRulesBirthCenter()
+    {
+        return &rules[0];
+    }
+    float* rulesBirthRadius()
+    {
+        return &rules[1];
+    }
+    float* rulesKeepCenter()
+    {
+        return &rules[2];
+    }
+    float* rulesKeepRadius()
+    {
+        return &rules[3];
+    }
+    float* rulesSpeed()
+    {
+        return &rules[4];
+    }
+    
     ~DSPOpenCL()
     {
         delete [] waveTable;
         delete [] samples;
         delete [] cells;
+        delete [] DefferedUpdateGrid;
         
         clReleaseDevice(deviceID);
         clReleaseContext(context);
@@ -326,6 +382,21 @@ public:
         clReleaseKernel(soundKernel);
     }
     
+    SampleValue4Type* getCurrentGridState()
+    {
+        return &cells[cellsCount * (bufferSize - 1)];
+    }
+    
+    glm::ivec2 getGridSize()
+    {
+        return glm::ivec2(gridSize.s[0], gridSize.s[1]);
+    }
+    
+    size_t getCellsCount()
+    {
+        return cellsCount;
+    }
+    
     void generateSamples(float* data = NULL)
     {
         size_t toWrite = _getBufferToWrite();
@@ -333,17 +404,22 @@ public:
         if (toWrite <= 0)
             return;
         
+        clEnqueueWriteBuffer(commandQueue, rulesMemoryObject, CL_TRUE, 0, rulesMemoryLength * sizeof(cl_float), rules, 0, NULL, NULL);
+        _applyDefferedUpdateGrid();
+        
         _updateSamplesProcessed();
         _updateSamplesToWrite(toWrite);
 
         size_t globalWorkSize[1] = { cellsCount };
         clEnqueueNDRangeKernel(commandQueue, cellsKernel, 1, NULL, globalWorkSize, NULL, 0, NULL, NULL);
         
+        clEnqueueReadBuffer(commandQueue, cellsMemoryObj, CL_TRUE, 0, cellsMemoryLength * sizeof(SampleValue4Type), cells, 0, NULL, NULL);
+        
         globalWorkSize[0] = toWrite;
         clEnqueueNDRangeKernel(commandQueue, soundKernel, 1, NULL, globalWorkSize, NULL, 0, NULL, NULL);
         
 #if LOGENABLED
-        bool logHard = true;
+        bool logHard = false;
         if (logHard)
         {
             clEnqueueReadBuffer(commandQueue, samplesMemoryObj, CL_TRUE, 0, toWrite * sizeof(SampleValueType), samples, 0, NULL, NULL);

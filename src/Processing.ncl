@@ -16,7 +16,7 @@ void osc(__global float* samples, __global float* waveTable, uint sampleRate, ui
     samples[samplePosition] = waveTable[tableIndex];
 }
 
-__kernel void kernelMain(__global float* samples, __global float* waveTable, uint sampleRate, uint samplesProcessed, uint bufferSize, __global float4* cells, __global float4 rules, uint2 gridSize)
+__kernel void kernelMain(__global float* samples, __global float* waveTable, uint sampleRate, uint samplesProcessed, uint bufferSize, __global float4* cells, __global float* rules, uint2 gridSize)
 {
     /*
     uint samplePosition = get_global_id(0);
