@@ -3,22 +3,32 @@
 #pragma OPENCL EXTENSION cl_khr_global_int32_extended_atomics : enable
 #pragma OPENCL EXTENSION cl_khr_local_int32_extended_atomics : enable
 
-float waveTableOsc(__global float* waveTable, float frequency, uint sampleRate, uint samplesProcessed, uint samplePosition);
+#pragma OPENCL EXTENSION cl_khr_fp64 : enable
+
+#define FLOATING_POINT_TYPE double
+
+typedef SampleType      FLOATING_POINT_TYPE;
+typedef SampleType2     FLOATING_POINT_TYPE2;
+typedef SampleType4     FLOATING_POINT_TYPE4;
+
+SampleType waveTableOsc(__global SampleType* waveTable, SampleType frequency, uint sampleRate, uint samplesProcessed, uint samplePosition);
+
 uint ringIndex(int index, uint size);
 uint2 torIndex(int2 index, uint2 size);
-float rand(float2 co);
-float randFreq(float fractTime);
 
-float waveTableOsc(__global float* waveTable, float frequency, uint sampleRate, uint samplesProcessed, uint samplePosition)
+SampleType rand(SampleType2 co);
+SampleType randFreq(SampleType fractTime);
+
+SampleType waveTableOsc(__global SampleType* waveTable, SampleType frequency, uint sampleRate, uint samplesProcessed, uint samplePosition)
 {
     uint     frecInt     = uint(frequency);
-    float    frecFract;  fract(frequency, &frecFract);
+    SampleType    frecFract;  fract(frequency, &frecFract);
     
     uint     SPmSR       = samplesProcessed % sampleRate;
     uint     FImSR       = frecInt % sampleRate;
     uint     SImSR       = samplePosition % sampleRate;
     uint     intPart     = (SPmSR * FImSR) % sampleRate + (SImSR * FImSR) % sampleRate;
-    uint     fractPart   = uint(float(samplesProcessed) * frecFract) % sampleRate + uint(float(samplePosition) * frecFract) % sampleRate;
+    uint     fractPart   = uint(SampleType(samplesProcessed) * frecFract) % sampleRate + uint(SampleType(samplePosition) * frecFract) % sampleRate;
     
     uint     tableIndex  = (intPart + fractPart) % sampleRate;
     
@@ -36,20 +46,20 @@ uint2 torIndex(int2 index, uint2 size)
 }
 
 
-float rand(float2 co)
+SampleType rand(SampleType2 co)
 {
-    float value = 0.0f;
-    return fract(sin(dot(co.xy, (float2)(12.9898f, 78.233f))) * 43758.5453f, &value);
+    SampleType value = 0.0f;
+    return fract(sin(dot(co.xy, (SampleType2)(12.9898f, 78.233f))) * 43758.5453f, &value);
 }
 
-float randFreq(float fractTime)
+SampleType randFreq(SampleType fractTime)
 {
-    float min = 20.0f;
-    float max = 22000.0f;
-    return pow(2.0f, (log2(min) + (log2(max) - log2(min)) * rand((float2)(fractTime, 1.3217f))));
+    SampleType min = 20.0f;
+    SampleType max = 22000.0f;
+    return pow(2.0f, (log2(min) + (log2(max) - log2(min)) * rand((SampleType2)(fractTime, 1.3217f))));
 }
 
-__kernel void kernelMain(__global float* samples, __global float* waveTable, uint sampleRate, uint samplesProcessed, uint bufferSize, __global float4* cells, __global float* rules, uint2 gridSize)
+__kernel void kernelMain(__global SampleType* samples, __global SampleType* waveTable, uint sampleRate, uint samplesProcessed, uint bufferSize, __global SampleType4* cells, __global SampleType* rules, uint2 gridSize)
 {
     // cells is gridSize.x * gridSize.y * bufferSize length
     uint globalID = get_global_id(0);
@@ -63,8 +73,8 @@ __kernel void kernelMain(__global float* samples, __global float* waveTable, uin
         globalID = get_global_id(0);
         uint cellIndex = sampleIdx * gridSize.x * gridSize.y + globalID;
         
-        float4 cell = cells[cellIndex];
-        float signal = cell.x * waveTableOsc(waveTable, cell.y, sampleRate, samplesProcessed, sampleIdx);
+        SampleType4 cell = cells[cellIndex];
+        SampleType signal = cell.x * waveTableOsc(waveTable, cell.y, sampleRate, samplesProcessed, sampleIdx);
         cells[cellIndex].z = signal;
         
         barrier(CLK_GLOBAL_MEM_FENCE);
@@ -75,7 +85,7 @@ __kernel void kernelMain(__global float* samples, __global float* waveTable, uin
         cell = cells[cellIndex];
         cellPosition = (uint2)(globalID / gridSize.y, globalID % gridSize.y);
         
-        float sum = 0.0f;
+        SampleType sum = 0.0f;
         int ruleRadius = 1;
         for (int i = -ruleRadius; i <= ruleRadius; ++i)
         {
@@ -85,18 +95,18 @@ __kernel void kernelMain(__global float* samples, __global float* waveTable, uin
                     continue;
                 
                 uint2 broIdx = torIndex((int2)cellPosition + (int2)(i, j), gridSize);
-                float4 bro = cells[(broIdx.x * gridSize.y + broIdx.y) + sampleIdx * gridSize.x * gridSize.y];
+                SampleType4 bro = cells[(broIdx.x * gridSize.y + broIdx.y) + sampleIdx * gridSize.x * gridSize.y];
                 
                 sum += bro.x * bro.z;
             }
         }
         
-        float deltaSign = -1.0f;
-        float deltaValue = rules[4] / (float)sampleRate;
-        float rulesBirthCenter = rules[0];
-        float rulesBirthRadius = rules[1];
-        float rulesKeepCenter = rules[2];
-        float rulesKeepRadius = rules[3];
+        SampleType deltaSign = -1.0f;
+        SampleType deltaValue = rules[4] / (SampleType)sampleRate;
+        SampleType rulesBirthCenter = rules[0];
+        SampleType rulesBirthRadius = rules[1];
+        SampleType rulesKeepCenter = rules[2];
+        SampleType rulesKeepRadius = rules[3];
         
         if (sum >= rulesBirthCenter - rulesBirthRadius && sum <= rulesBirthCenter + rulesBirthRadius)
             deltaSign = 1.0f;
@@ -105,10 +115,10 @@ __kernel void kernelMain(__global float* samples, __global float* waveTable, uin
         
         int cellNextStepIndex = globalID + ((sampleIdx + 1) % bufferSize) * gridSize.x * gridSize.y;
 
-        float newAmp = clamp(cell.x + deltaValue * deltaSign, 0.0f, 1.0f);
-        float randFreqMask = floor(1.0f - newAmp);
+        SampleType newAmp = clamp(cell.x + deltaValue * deltaSign, 0.0f, 1.0f);
+        SampleType randFreqMask = floor(1.0f - newAmp);
         cells[cellNextStepIndex].x = newAmp;
-        cells[cellNextStepIndex].y = cell.y * (1 - randFreqMask) + randFreq((float)((samplesProcessed % sampleRate + sampleIdx) % sampleRate) / (float)sampleRate) * randFreqMask;
+        cells[cellNextStepIndex].y = cell.y * (1 - randFreqMask) + randFreq((SampleType)((samplesProcessed % sampleRate + sampleIdx) % sampleRate) / (SampleType)sampleRate) * randFreqMask;
         
         barrier(CLK_GLOBAL_MEM_FENCE);
     }

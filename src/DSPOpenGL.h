@@ -15,15 +15,15 @@
 #include "cinder/audio/audio.h"
 #include "cinder/audio/dsp/Dsp.h"
 
-typedef GLfloat                     SampleValueType;
+typedef GLfloat                     DSPSampleType;
 
 #if UNSAFEBUFFER
 #include "UnsafeRingBuffer.h"
-typedef UnsafeRingBufferT<SampleValueType> RingBuffer;
+typedef UnsafeRingBufferT<DSPSampleType> RingBuffer;
 #else
 #include "cinder/audio/audio.h"
 #include "cinder/audio/dsp/Dsp.h"
-typedef ci::audio::dsp::RingBufferT<SampleValueType> RingBuffer;
+typedef ci::audio::dsp::RingBufferT<DSPSampleType> RingBuffer;
 #endif
 
 class DSPOpenGL
@@ -37,7 +37,7 @@ private:
     GLuint _waveTableBuffer;
     GLuint _waveTableTex;
     GLuint _DSPFeedbackBuffer;
-    SampleValueType* _feedbackData;
+    DSPSampleType* _feedbackData;
     
     GLuint _DSPShader;
     GLuint _DSPProgram;
@@ -97,8 +97,8 @@ private:
     void _prepareSoundFeedbackBuffers()
     {
         size_t nodesCount = getBufferSize();
-        size_t _samplesBytesSize = nodesCount * sizeof(SampleValueType);
-        _feedbackData = new SampleValueType[nodesCount];
+        size_t _samplesBytesSize = nodesCount * sizeof(DSPSampleType);
+        _feedbackData = new DSPSampleType[nodesCount];
         
         GLint* sampleIndexData = new GLint[nodesCount];
         int sampleIndexDataBytesSize = nodesCount * sizeof(GLint);
@@ -118,11 +118,11 @@ private:
         glBindBuffer(GL_ARRAY_BUFFER, 0);
         
         
-        SampleValueType* waveTable = new SampleValueType[_sampleRate];
-        size_t waveTableBytesSize = _sampleRate * sizeof(SampleValueType);
+        DSPSampleType* waveTable = new DSPSampleType[_sampleRate];
+        size_t waveTableBytesSize = _sampleRate * sizeof(DSPSampleType);
         for (size_t i = 0; i < _sampleRate; ++i)
         {
-            waveTable[i] = (SampleValueType)cos(2 * M_PI * (double)i / (double)_sampleRate);
+            waveTable[i] = (DSPSampleType)cos(2 * M_PI * (double)i / (double)_sampleRate);
         }
         
         glGenBuffers(1, &_waveTableBuffer);
@@ -217,25 +217,25 @@ public:
         
         // recieve processed data from feedback
 #if UNSAFEBUFFER
-        SampleValueType* firstPart = nullptr;
-        SampleValueType* secondPart = nullptr;
+        DSPSampleType* firstPart = nullptr;
+        DSPSampleType* secondPart = nullptr;
         size_t firstLength = 0;
         size_t secondLength = 0;
         
         RingBuffer.getUnsafeDataWritePointer(toWrite, firstPart, secondPart, firstLength, secondLength);
         if (firstPart != nullptr)
         {
-            glGetBufferSubData(GL_TRANSFORM_FEEDBACK_BUFFER, 0, firstLength * sizeof(SampleValueType), firstPart);
+            glGetBufferSubData(GL_TRANSFORM_FEEDBACK_BUFFER, 0, firstLength * sizeof(DSPSampleType), firstPart);
             _samplesProcessed += firstLength;
             if (secondPart != nullptr)
             {
-                glGetBufferSubData(GL_TRANSFORM_FEEDBACK_BUFFER, firstLength * sizeof(SampleValueType), secondLength * sizeof(SampleValueType), secondPart);
+                glGetBufferSubData(GL_TRANSFORM_FEEDBACK_BUFFER, firstLength * sizeof(DSPSampleType), secondLength * sizeof(DSPSampleType), secondPart);
                 _samplesProcessed += secondLength;
             }
             
         }
 #else
-        glGetBufferSubData(GL_TRANSFORM_FEEDBACK_BUFFER, 0, toWrite * sizeof(SampleValueType), _feedbackData);
+        glGetBufferSubData(GL_TRANSFORM_FEEDBACK_BUFFER, 0, toWrite * sizeof(DSPSampleType), _feedbackData);
         RingBuffer.write(_feedbackData, toWrite);
         _samplesProcessed += toWrite;
 #endif

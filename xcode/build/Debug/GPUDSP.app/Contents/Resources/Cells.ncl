@@ -1,24 +1,36 @@
-#pragma OPENCL EXTENSION cl_khr_global_int32_base_atomics : enable
-#pragma OPENCL EXTENSION cl_khr_local_int32_base_atomics : enable
-#pragma OPENCL EXTENSION cl_khr_global_int32_extended_atomics : enable
-#pragma OPENCL EXTENSION cl_khr_local_int32_extended_atomics : enable
+#ifdef cl_khr_fp64
+#pragma OPENCL EXTENSION cl_khr_fp64 : enable
+typedef     double      DSPSampleType;
+typedef     double2     DSPSampleType2;
+typedef     double4     DSPSampleType4;
+#else
+#pragma OPENCL EXTENSION cl_khr_fp64 : enable
+typedef     float       DSPSampleType;
+typedef     float2      DSPSampleType2;
+typedef     float4      DSPSampleType4;
+#endif
 
-float waveTableOsc(__global float* waveTable, float frequency, uint sampleRate, uint samplesProcessed, uint samplePosition);
+
+DSPSampleType waveTableOsc(__global DSPSampleType* waveTable, DSPSampleType frequency, uint sampleRate, uint samplesProcessed, uint samplePosition);
+
 uint ringIndex(int index, uint size);
 uint2 torIndex(int2 index, uint2 size);
-float rand(float2 co);
-float randFreq(float fractTime);
 
-float waveTableOsc(__global float* waveTable, float frequency, uint sampleRate, uint samplesProcessed, uint samplePosition)
+DSPSampleType rand(DSPSampleType2 co);
+DSPSampleType randFreq(DSPSampleType fractTime);
+
+DSPSampleType waveTableOsc(__global DSPSampleType* waveTable, DSPSampleType frequency, uint sampleRate, uint samplesProcessed, uint samplePosition)
 {
     uint     frecInt     = uint(frequency);
-    float    frecFract;  fract(frequency, &frecFract);
+    
+    DSPSampleType    frecFract;
+    fract(frequency, &frecFract);
     
     uint     SPmSR       = samplesProcessed % sampleRate;
     uint     FImSR       = frecInt % sampleRate;
     uint     SImSR       = samplePosition % sampleRate;
     uint     intPart     = (SPmSR * FImSR) % sampleRate + (SImSR * FImSR) % sampleRate;
-    uint     fractPart   = uint(float(samplesProcessed) * frecFract) % sampleRate + uint(float(samplePosition) * frecFract) % sampleRate;
+    uint     fractPart   = uint(DSPSampleType(samplesProcessed) * frecFract) % sampleRate + uint(DSPSampleType(samplePosition) * frecFract) % sampleRate;
     
     uint     tableIndex  = (intPart + fractPart) % sampleRate;
     
@@ -36,20 +48,20 @@ uint2 torIndex(int2 index, uint2 size)
 }
 
 
-float rand(float2 co)
+DSPSampleType rand(DSPSampleType2 co)
 {
-    float value = 0.0f;
-    return fract(sin(dot(co.xy, (float2)(12.9898f, 78.233f))) * 43758.5453f, &value);
+    DSPSampleType value = 0.0f;
+    return fract(sin(dot(co.xy, (DSPSampleType2)(12.9898f, 78.233f))) * 43758.5453f, &value);
 }
 
-float randFreq(float fractTime)
+DSPSampleType randFreq(DSPSampleType fractTime)
 {
-    float min = 20.0f;
-    float max = 22000.0f;
-    return pow(2.0f, (log2(min) + (log2(max) - log2(min)) * rand((float2)(fractTime, 1.3217f))));
+    DSPSampleType min = 20.0f;
+    DSPSampleType max = 22000.0f;
+    return pow(2.0f, (log2(min) + (log2(max) - log2(min)) * rand((DSPSampleType2)(fractTime, 1.3217f))));
 }
 
-__kernel void kernelMain(__global float* samples, __global float* waveTable, uint sampleRate, uint samplesProcessed, uint bufferSize, __global float4* cells, __global float* rules, uint2 gridSize)
+__kernel void kernelMain(__global DSPSampleType* samples, __global DSPSampleType* waveTable, uint sampleRate, uint samplesProcessed, uint bufferSize, __global DSPSampleType4* cells, __global DSPSampleType* rules, uint2 gridSize)
 {
     // cells is gridSize.x * gridSize.y * bufferSize length
     uint globalID = get_global_id(0);
@@ -63,8 +75,8 @@ __kernel void kernelMain(__global float* samples, __global float* waveTable, uin
         globalID = get_global_id(0);
         uint cellIndex = sampleIdx * gridSize.x * gridSize.y + globalID;
         
-        float4 cell = cells[cellIndex];
-        float signal = cell.x * waveTableOsc(waveTable, cell.y, sampleRate, samplesProcessed, sampleIdx);
+        DSPSampleType4 cell = cells[cellIndex];
+        DSPSampleType signal = cell.x * waveTableOsc(waveTable, cell.y, sampleRate, samplesProcessed, sampleIdx);
         cells[cellIndex].z = signal;
         
         barrier(CLK_GLOBAL_MEM_FENCE);
@@ -75,7 +87,7 @@ __kernel void kernelMain(__global float* samples, __global float* waveTable, uin
         cell = cells[cellIndex];
         cellPosition = (uint2)(globalID / gridSize.y, globalID % gridSize.y);
         
-        float sum = 0.0f;
+        DSPSampleType sum = 0.0f;
         int ruleRadius = 1;
         for (int i = -ruleRadius; i <= ruleRadius; ++i)
         {
@@ -85,18 +97,18 @@ __kernel void kernelMain(__global float* samples, __global float* waveTable, uin
                     continue;
                 
                 uint2 broIdx = torIndex((int2)cellPosition + (int2)(i, j), gridSize);
-                float4 bro = cells[(broIdx.x * gridSize.y + broIdx.y) + sampleIdx * gridSize.x * gridSize.y];
+                DSPSampleType4 bro = cells[(broIdx.x * gridSize.y + broIdx.y) + sampleIdx * gridSize.x * gridSize.y];
                 
                 sum += bro.x * bro.z;
             }
         }
         
-        float deltaSign = -1.0f;
-        float deltaValue = rules[4] / (float)sampleRate;
-        float rulesBirthCenter = rules[0];
-        float rulesBirthRadius = rules[1];
-        float rulesKeepCenter = rules[2];
-        float rulesKeepRadius = rules[3];
+        DSPSampleType deltaSign = -1.0f;
+        DSPSampleType deltaValue = rules[4] / (DSPSampleType)sampleRate;
+        DSPSampleType rulesBirthCenter = rules[0];
+        DSPSampleType rulesBirthRadius = rules[1];
+        DSPSampleType rulesKeepCenter = rules[2];
+        DSPSampleType rulesKeepRadius = rules[3];
         
         if (sum >= rulesBirthCenter - rulesBirthRadius && sum <= rulesBirthCenter + rulesBirthRadius)
             deltaSign = 1.0f;
@@ -105,10 +117,10 @@ __kernel void kernelMain(__global float* samples, __global float* waveTable, uin
         
         int cellNextStepIndex = globalID + ((sampleIdx + 1) % bufferSize) * gridSize.x * gridSize.y;
 
-        float newAmp = clamp(cell.x + deltaValue * deltaSign, 0.0f, 1.0f);
-        float randFreqMask = floor(1.0f - newAmp);
+        DSPSampleType newAmp = clamp(cell.x + deltaValue * deltaSign, 0.0f, 1.0f);
+        DSPSampleType randFreqMask = floor(1.0f - newAmp);
         cells[cellNextStepIndex].x = newAmp;
-        cells[cellNextStepIndex].y = cell.y * (1 - randFreqMask) + randFreq((float)((samplesProcessed % sampleRate + sampleIdx) % sampleRate) / (float)sampleRate) * randFreqMask;
+        cells[cellNextStepIndex].y = cell.y * (1 - randFreqMask) + randFreq((DSPSampleType)((samplesProcessed % sampleRate + sampleIdx) % sampleRate) / (DSPSampleType)sampleRate) * randFreqMask;
         
         barrier(CLK_GLOBAL_MEM_FENCE);
     }

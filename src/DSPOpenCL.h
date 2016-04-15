@@ -13,16 +13,16 @@
 #include <OpenCL/OpenCL.h>
 #include "cinder/app/cocoa/PlatformCocoa.h"
 
-typedef cl_float SampleValueType;
-typedef cl_float4 SampleValue4Type;
+typedef cl_double        DSPSampleType;
+typedef cl_double4       DSPSampleType4;
 
 #if UNSAFEBUFFER
 #include "UnsafeRingBuffer.h"
-typedef UnsafeRingBufferT<SampleValueType> RingBuffer;
+typedef UnsafeRingBufferT<DSPSampleType> RingBuffer;
 #else
 #include "cinder/audio/audio.h"
 #include "cinder/audio/dsp/Dsp.h"
-typedef ci::audio::dsp::RingBufferT<SampleValueType> RingBuffer;
+typedef ci::audio::dsp::RingBufferT<DSPSampleType> RingBuffer;
 #endif
 
 class DSPOpenCL
@@ -123,15 +123,15 @@ protected:
     cl_kernel           cellsKernel;
     cl_kernel           soundKernel;
     
-    SampleValueType*    samples;
+    DSPSampleType*      samples;
     cl_mem              samplesMemoryObj;
     size_t              samplesMemoryLength;
     
-    SampleValueType*    waveTable;
+    DSPSampleType*      waveTable;
     cl_mem              waveTableMemoryObj;
     size_t              waveTableMemoryLength;
     
-    SampleValue4Type*   cells;
+    DSPSampleType4*     cells;
     size_t              cellsCount;
     cl_mem              cellsMemoryObj;
     size_t              cellsMemoryLength;
@@ -157,6 +157,17 @@ protected:
         cl_uint numDevices;
         ret = clGetDeviceIDs(platformID, CL_DEVICE_TYPE_GPU, 1, &deviceID, &numDevices);
         logErrorString(ret);
+        
+#if LOGENABLED
+        size_t extInfoSize = 0;
+        clGetDeviceInfo(deviceID, CL_DEVICE_EXTENSIONS, NULL, NULL, &extInfoSize);
+        logErrorString(ret);
+        char* info = new char[extInfoSize];
+        clGetDeviceInfo(deviceID, CL_DEVICE_EXTENSIONS, extInfoSize, info, NULL);
+        logErrorString(ret);
+        std::cout << "[OpenCL SUPPORTED EXTENSIONS] : " << info << std::endl;
+        delete [] info;
+#endif
         
         context = clCreateContext(NULL, 1, &deviceID, NULL, NULL, &ret);
         logErrorString(ret);
@@ -223,32 +234,31 @@ protected:
         // samples
         samplesMemoryObj = NULL;
         samplesMemoryLength = bufferSize;
-        samples = new SampleValueType[samplesMemoryLength];
+        samples = new DSPSampleType[samplesMemoryLength];
         for (int i = 0; i < samplesMemoryLength; ++i)
             samples[i] = 0;
-        samplesMemoryObj = clCreateBuffer(context, CL_MEM_READ_WRITE, samplesMemoryLength * sizeof(SampleValueType), NULL, &ret);
-        logErrorString(ret);
-        ret = clEnqueueWriteBuffer(commandQueue, samplesMemoryObj, CL_TRUE, 0, samplesMemoryLength * sizeof(SampleValueType), samples, 0, NULL, NULL);
+        samplesMemoryObj = clCreateBuffer(context, CL_MEM_READ_WRITE, samplesMemoryLength * sizeof(DSPSampleType), NULL, &ret);
+        logErrorString(ret);        ret = clEnqueueWriteBuffer(commandQueue, samplesMemoryObj, CL_TRUE, 0, samplesMemoryLength * sizeof(DSPSampleType), samples, 0, NULL, NULL);
         logErrorString(ret);
         
         // wavetable
         waveTableMemoryObj = NULL;
         waveTableMemoryLength = sampleRate;
-        waveTable = new SampleValueType[waveTableMemoryLength];
+        waveTable = new DSPSampleType[waveTableMemoryLength];
         for (int i = 0; i < sampleRate; ++i)
             waveTable[i] = (float)(sin(2.0 * M_PI * (double)i / (double)sampleRate));
-        waveTableMemoryObj = clCreateBuffer(context, CL_MEM_READ_WRITE, waveTableMemoryLength * sizeof(SampleValueType), NULL, &ret);
+        waveTableMemoryObj = clCreateBuffer(context, CL_MEM_READ_WRITE, waveTableMemoryLength * sizeof(DSPSampleType), NULL, &ret);
         logErrorString(ret);
-        ret = clEnqueueWriteBuffer(commandQueue, waveTableMemoryObj, CL_TRUE, 0, waveTableMemoryLength * sizeof(SampleValueType), waveTable, 0, NULL, NULL);
+        ret = clEnqueueWriteBuffer(commandQueue, waveTableMemoryObj, CL_TRUE, 0, waveTableMemoryLength * sizeof(DSPSampleType), waveTable, 0, NULL, NULL);
         logErrorString(ret);
         
         rulesMemoryObject = NULL;
         rulesMemoryLength = 5;
         rules = new cl_float[rulesMemoryLength];
-        rules[0] = 0.5f;
-        rules[1] = 0.1f;
-        rules[2] = 0.4f;
-        rules[3] = 0.05f;
+        rules[0] = 0.7f;
+        rules[1] = 0.5f;
+        rules[2] = -0.7f;
+        rules[3] = 0.4f;
         rules[4] = 1.0f;
         rulesMemoryObject = clCreateBuffer(context, CL_MEM_READ_WRITE, rulesMemoryLength * sizeof(cl_float), NULL, &ret);
         logErrorString(ret);
@@ -259,8 +269,8 @@ protected:
         gridSize = { 16, 16 };
         cellsCount = gridSize.s[0] * gridSize.s[1];
         cellsMemoryLength = cellsCount * bufferSize;
-        cells = new SampleValue4Type[cellsMemoryLength];
-        DefferedUpdateGrid = new SampleValue4Type[cellsCount];
+        cells = new DSPSampleType4[cellsMemoryLength];
+        DefferedUpdateGrid = new DSPSampleType4[cellsCount];
         for (int i = 0; i < cellsMemoryLength; ++i)
         {
             for (int j = 0; j < 4; ++j)
@@ -276,9 +286,9 @@ protected:
             cells[i].s[1] = randFreq();
         }
         
-        cellsMemoryObj = clCreateBuffer(context, CL_MEM_READ_WRITE, cellsMemoryLength * sizeof(SampleValue4Type), NULL, &ret);
+        cellsMemoryObj = clCreateBuffer(context, CL_MEM_READ_WRITE, cellsMemoryLength * sizeof(DSPSampleType4), NULL, &ret);
         logErrorString(ret);
-        ret = clEnqueueWriteBuffer(commandQueue, cellsMemoryObj, CL_TRUE, 0, cellsMemoryLength * sizeof(SampleValue4Type), cells, 0, NULL, NULL);
+        ret = clEnqueueWriteBuffer(commandQueue, cellsMemoryObj, CL_TRUE, 0, cellsMemoryLength * sizeof(DSPSampleType4), cells, 0, NULL, NULL);
         logErrorString(ret);
         
         _setupKernelVars(cellsKernel);
@@ -322,12 +332,12 @@ protected:
             }
         }
         
-        clEnqueueWriteBuffer(commandQueue, cellsMemoryObj, CL_TRUE, 0, cellsCount * sizeof(SampleValue4Type), cells, 0, NULL, NULL);
+        clEnqueueWriteBuffer(commandQueue, cellsMemoryObj, CL_TRUE, 0, cellsCount * sizeof(DSPSampleType4), cells, 0, NULL, NULL);
     }
     
 public:
     RingBuffer RingBuffer;
-    SampleValue4Type*   DefferedUpdateGrid;
+    DSPSampleType4*   DefferedUpdateGrid;
     
     DSPOpenCL(size_t initSampleRate, size_t initBufferSize) :
     RingBuffer(initBufferSize)
@@ -382,7 +392,7 @@ public:
         clReleaseKernel(soundKernel);
     }
     
-    SampleValue4Type* getCurrentGridState()
+    DSPSampleType4* getCurrentGridState()
     {
         return &cells[cellsCount * (bufferSize - 1)];
     }
@@ -413,7 +423,7 @@ public:
         size_t globalWorkSize[1] = { cellsCount };
         clEnqueueNDRangeKernel(commandQueue, cellsKernel, 1, NULL, globalWorkSize, NULL, 0, NULL, NULL);
         
-        clEnqueueReadBuffer(commandQueue, cellsMemoryObj, CL_TRUE, 0, cellsMemoryLength * sizeof(SampleValue4Type), cells, 0, NULL, NULL);
+        clEnqueueReadBuffer(commandQueue, cellsMemoryObj, CL_TRUE, 0, cellsMemoryLength * sizeof(DSPSampleType4), cells, 0, NULL, NULL);
         
         globalWorkSize[0] = toWrite;
         clEnqueueNDRangeKernel(commandQueue, soundKernel, 1, NULL, globalWorkSize, NULL, 0, NULL, NULL);
@@ -422,7 +432,7 @@ public:
         bool logHard = false;
         if (logHard)
         {
-            clEnqueueReadBuffer(commandQueue, samplesMemoryObj, CL_TRUE, 0, toWrite * sizeof(SampleValueType), samples, 0, NULL, NULL);
+            clEnqueueReadBuffer(commandQueue, samplesMemoryObj, CL_TRUE, 0, toWrite * sizeof(DSPSampleType), samples, 0, NULL, NULL);
             
             int tail = toWrite;
             int radius = 10;
@@ -440,31 +450,31 @@ public:
         
         if (data != NULL)
         {
-            clEnqueueReadBuffer(commandQueue, samplesMemoryObj, CL_TRUE, 0, toWrite * sizeof(SampleValueType), data, 0, NULL, NULL);
+            clEnqueueReadBuffer(commandQueue, samplesMemoryObj, CL_TRUE, 0, toWrite * sizeof(DSPSampleType), data, 0, NULL, NULL);
             samplesProcessed += toWrite;
         }
         else
         {
 #if UNSAFEBUFFER
-        SampleValueType* firstPart = nullptr;
-        SampleValueType* secondPart = nullptr;
+        DSPSampleType* firstPart = nullptr;
+        DSPSampleType* secondPart = nullptr;
         size_t firstLength = 0;
         size_t secondLength = 0;
         
         RingBuffer.getUnsafeDataWritePointer(toWrite, firstPart, secondPart, firstLength, secondLength);
         if (firstPart != nullptr)
         {
-            clEnqueueReadBuffer(commandQueue, samplesMemoryObj, CL_TRUE, 0, firstLength * sizeof(SampleValueType), firstPart, 0, NULL, NULL);
+            clEnqueueReadBuffer(commandQueue, samplesMemoryObj, CL_TRUE, 0, firstLength * sizeof(DSPSampleType), firstPart, 0, NULL, NULL);
             samplesProcessed += firstLength;
             if (secondPart != nullptr)
             {
-                clEnqueueReadBuffer(commandQueue, samplesMemoryObj, CL_TRUE, firstLength * sizeof(SampleValueType), secondLength * sizeof(SampleValueType), secondPart, 0, NULL, NULL);
+                clEnqueueReadBuffer(commandQueue, samplesMemoryObj, CL_TRUE, firstLength * sizeof(DSPSampleType), secondLength * sizeof(DSPSampleType), secondPart, 0, NULL, NULL);
                 samplesProcessed += secondLength;
             }
             
         }
 #else
-        clEnqueueReadBuffer(commandQueue, samplesMemoryObj, CL_TRUE, 0, toWrite * sizeof(SampleValueType), samples, 0, NULL, NULL);
+        clEnqueueReadBuffer(commandQueue, samplesMemoryObj, CL_TRUE, 0, toWrite * sizeof(DSPSampleType), samples, 0, NULL, NULL);
 
         RingBuffer.write(samples, toWrite);
         samplesProcessed += toWrite;

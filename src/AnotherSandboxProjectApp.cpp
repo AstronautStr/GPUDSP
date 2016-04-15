@@ -172,7 +172,7 @@ void AnotherSandboxProjectApp::_updateGridState()
         glGenBuffers(1, &_gridBuffer);
     }
     
-    const SampleValue4Type* gridState = _DSPController->getCurrentGridState();
+    const DSPSampleType4* gridState = _DSPController->getCurrentGridState();
     for (size_t i = 0; i < _gridBufferLength; ++i)
     {
         _gridData[i] = (GLfloat)gridState[i / _cellAttribCount].s[i % _cellAttribCount];
@@ -289,7 +289,7 @@ void AnotherSandboxProjectApp::modifyCell(vec2 screenPos, float value)
     ivec2 gridPoint = ivec2(math<int>::clamp(screenPos.x / getWindowWidth() * gridSize.x, 0, gridSize.x - 1), math<int>::clamp(screenPos.y / getWindowHeight() * gridSize.y, 0, gridSize.y - 1));
     size_t index = gridPoint.x * gridSize.y + gridPoint.y;
     
-    _DSPController->DefferedUpdateGrid[index].s[0] = (SampleValueType)value;
+    _DSPController->DefferedUpdateGrid[index].s[0] = (DSPSampleType)value;
 }
 
 void AnotherSandboxProjectApp::keyDown( KeyEvent event )
