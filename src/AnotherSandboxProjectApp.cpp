@@ -7,10 +7,10 @@
 #include "cinder/params/Params.h"
 #include "Utils.h"
 
-#define UNSAFEBUFFER 1
 #define OPENCL 1
 
-#define FIXEDBUFFER 1
+#define UNSAFEBUFFER 1
+#define FIXEDBUFFER 0
 
 #if OPENCL
 #include "DSPOpenCL.h"
@@ -238,9 +238,13 @@ void AnotherSandboxProjectApp::setup()
     
     const size_t sampleRate = outputNode->getSampleRate();
     const size_t bufferSize = outputNode->getFramesPerBlock();
-    
+#if FIXEDBUFFER
     const size_t audioBuffersInGPUBuffer = 1;
     const size_t GPUBuffersInRingBuffer = 1;
+#else
+    const size_t audioBuffersInGPUBuffer = 3;
+    const size_t GPUBuffersInRingBuffer = 2;
+#endif
 #if OPENCL
     _DSPController = new DSPOpenCL(sampleRate, bufferSize * audioBuffersInGPUBuffer * GPUBuffersInRingBuffer);
     externalDSPNode = ctx->makeNode(new ExternalDSPNode(&_DSPController->RingBuffer, _DSPController));
@@ -263,6 +267,10 @@ void AnotherSandboxProjectApp::setup()
     _params.addParam("Rules: Keep center", _DSPController->rulesKeepCenter(), "min=-10.0 max=10.0 step=0.001");
     _params.addParam("Rules: Keep radius", _DSPController->rulesKeepRadius(), "min=0.0 max=10.0 step=0.001");
     _params.addParam("Rules: Speed", _DSPController->rulesSpeed(), "min=0.0 max=1.0 step=0.001");
+    
+#if !FIXEDBUFFER
+    _DSPController->generateSamples();
+#endif
 }
 
 
@@ -290,6 +298,7 @@ void AnotherSandboxProjectApp::modifyCell(vec2 screenPos, float value)
     size_t index = gridPoint.x * gridSize.y + gridPoint.y;
     
     _DSPController->DefferedUpdateGrid[index].s[0] = (DSPSampleType)value;
+    _DSPController->DefferedUpdateGrid[index].s[1] = (DSPSampleType)randFreq();
 }
 
 void AnotherSandboxProjectApp::keyDown( KeyEvent event )

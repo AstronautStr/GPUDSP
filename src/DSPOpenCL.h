@@ -13,8 +13,8 @@
 #include <OpenCL/OpenCL.h>
 #include "cinder/app/cocoa/PlatformCocoa.h"
 
-typedef cl_double        DSPSampleType;
-typedef cl_double4       DSPSampleType4;
+typedef cl_float        DSPSampleType;
+typedef cl_float4       DSPSampleType4;
 
 #if UNSAFEBUFFER
 #include "UnsafeRingBuffer.h"
@@ -246,7 +246,7 @@ protected:
         waveTableMemoryLength = sampleRate;
         waveTable = new DSPSampleType[waveTableMemoryLength];
         for (int i = 0; i < sampleRate; ++i)
-            waveTable[i] = (float)(sin(2.0 * M_PI * (double)i / (double)sampleRate));
+            waveTable[i] = (DSPSampleType)(sin(2.0 * M_PI * (double)i / (double)sampleRate));
         waveTableMemoryObj = clCreateBuffer(context, CL_MEM_READ_WRITE, waveTableMemoryLength * sizeof(DSPSampleType), NULL, &ret);
         logErrorString(ret);
         ret = clEnqueueWriteBuffer(commandQueue, waveTableMemoryObj, CL_TRUE, 0, waveTableMemoryLength * sizeof(DSPSampleType), waveTable, 0, NULL, NULL);
@@ -258,7 +258,7 @@ protected:
         rules[0] = 0.7f;
         rules[1] = 0.5f;
         rules[2] = -0.7f;
-        rules[3] = 0.4f;
+        rules[3] = 0.265f;
         rules[4] = 1.0f;
         rulesMemoryObject = clCreateBuffer(context, CL_MEM_READ_WRITE, rulesMemoryLength * sizeof(cl_float), NULL, &ret);
         logErrorString(ret);
@@ -325,10 +325,27 @@ protected:
             float replaceMask = DefferedUpdateGrid[i].s[0] > 0.0f ? 1.0f : 0.0f;
             float clearMask = DefferedUpdateGrid[i].s[0] < 0.0f ? 1.0f : 0.0f;
             
+#if LOGENABLED
+            bool log = false;
+            if (replaceMask == 1.0)
+            {
+                log = true;
+                std::cout << "[Cells]: Replaced[" << i << "]" << std::endl;
+            }
+            if (clearMask == 1.0)
+            {
+                log = true;
+                std::cout << "[Cells]: Cleared[" << i << "]" << std::endl;
+            }
+#endif
             for (int j = 0; j < 4; ++j)
             {
                 cells[i].s[j] = (replaceMask * DefferedUpdateGrid[i].s[j] + (1.0f - replaceMask) * cells[i].s[j]) * (1.0f - clearMask);
                 DefferedUpdateGrid[i].s[j] = 0.0f;
+#if LOGENABLED
+                if (log)
+                    std::cout << "[Cells]: New value[" << i << "][" << j << "] = " << cells[i].s[j] << std::endl;
+#endif
             }
         }
         
@@ -423,8 +440,6 @@ public:
         size_t globalWorkSize[1] = { cellsCount };
         clEnqueueNDRangeKernel(commandQueue, cellsKernel, 1, NULL, globalWorkSize, NULL, 0, NULL, NULL);
         
-        clEnqueueReadBuffer(commandQueue, cellsMemoryObj, CL_TRUE, 0, cellsMemoryLength * sizeof(DSPSampleType4), cells, 0, NULL, NULL);
-        
         globalWorkSize[0] = toWrite;
         clEnqueueNDRangeKernel(commandQueue, soundKernel, 1, NULL, globalWorkSize, NULL, 0, NULL, NULL);
         
@@ -483,6 +498,8 @@ public:
 #if LOGENABLED
         std::cerr << "[ProcessingThread]: processed " << toWrite << "samples" << std::endl;
 #endif
+        
+        clEnqueueReadBuffer(commandQueue, cellsMemoryObj, CL_TRUE, 0, cellsMemoryLength * sizeof(DSPSampleType4), cells, 0, NULL, NULL);
     }
 };
 

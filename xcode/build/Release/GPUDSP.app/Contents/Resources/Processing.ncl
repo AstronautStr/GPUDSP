@@ -1,41 +1,55 @@
+#ifdef cl_khr_fp64
 #pragma OPENCL EXTENSION cl_khr_fp64 : enable
+typedef     double      DSPSampleType;
+typedef     double2     DSPSampleType2;
+typedef     double4     DSPSampleType4;
+#else
+#pragma OPENCL EXTENSION cl_khr_fp64 : enable
+typedef     float       DSPSampleType;
+typedef     float2      DSPSampleType2;
+typedef     float4      DSPSampleType4;
+#endif
 
-#define FLOATING_POINT_TYPE double
+typedef     int         DSPSampleTypei;
+#define     DSPSampleTypeiMax   INT_MAX
 
-typedef SampleType      FLOATING_POINT_TYPE;
-typedef SampleType2     FLOATING_POINT_TYPE2;
-typedef SampleType4     FLOATING_POINT_TYPE4;
-
-void osc(__global SampleType* samples, __global SampleType* waveTable, uint sampleRate, uint samplesProcessed, SampleType frequency)
+void osc(__global DSPSampleType* samples, __global DSPSampleType* waveTable, uint sampleRate, uint samplesProcessed, DSPSampleType frequency)
 {
     uint samplePosition = get_global_id(0);
 
     uint     frecInt     = uint(frequency);
-    SampleType    frecFract;  fract(frequency, &frecFract);
+    DSPSampleType    frecFract;  fract(frequency, &frecFract);
     
     uint     SPmSR       = samplesProcessed % sampleRate;
     uint     FImSR       = frecInt % sampleRate;
     uint     SImSR       = samplePosition % sampleRate;
     uint     intPart     = (SPmSR * FImSR) % sampleRate + (SImSR * FImSR) % sampleRate;
-    uint     fractPart   = uint(SampleType(samplesProcessed) * frecFract) % sampleRate + uint(SampleType(samplePosition) * frecFract) % sampleRate;
+    uint     fractPart   = uint(DSPSampleType(samplesProcessed) * frecFract) % sampleRate + uint(DSPSampleType(samplePosition) * frecFract) % sampleRate;
     
     uint     tableIndex  = (intPart + fractPart) % sampleRate;
     
     samples[samplePosition] = waveTable[tableIndex];
 }
 
-__kernel void kernelMain(__global SampleType* samples, __global SampleType* waveTable, uint sampleRate, uint samplesProcessed, uint bufferSize, __global SampleType4* cells, __global SampleType* rules, uint2 gridSize)
+void processingFloat(__global DSPSampleType* samples, __global DSPSampleType* waveTable, uint sampleRate, uint samplesProcessed, uint bufferSize, __global DSPSampleType4* cells, uint2 gridSize)
 {
     uint globalID = get_global_id(0);
     uint size = gridSize.x * gridSize.y;
     
     samples[globalID] = 0.0f;
-    SampleType power = 0.0f;
+    DSPSampleType power = 1.0f;
+    for (int i = 0; i < size; ++i)
+        power += fabs(cells[i + globalID * size].x);
+    
     for (int i = 0; i < size; ++i)
     {
-        power += fabs(cells[i + globalID * size].x);
-        samples[globalID] += cells[i + globalID * size].z;
+        samples[globalID] += cells[i + globalID * size].z / power;
     }
-     
-    samples[globalID] = samples[globalID] / power;
+    
+    samples[globalID] = samples[globalID];
+}
+
+__kernel void kernelMain(__global DSPSampleType* samples, __global DSPSampleType* waveTable, uint sampleRate, uint samplesProcessed, uint bufferSize, __global DSPSampleType4* cells, __global DSPSampleType* rules, uint2 gridSize)
+{
+    processingFloat(samples, waveTable, sampleRate, samplesProcessed, bufferSize, cells, gridSize);
 }

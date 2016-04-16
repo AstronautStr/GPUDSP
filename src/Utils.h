@@ -37,7 +37,7 @@ float randAmp()
     return (float)rand() / RAND_MAX;
 }
 
-float randFreq(float min = 20.0f, float max = 22000.0f, bool white = false)
+float randFreq(float min = 20.0f, float max = 22000.0f, bool white = true)
 {
     if (white)
         return pow(2.0, (log2(min) + (log2(max) - log2(min)) * ((float)rand() / RAND_MAX)));

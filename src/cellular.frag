@@ -22,6 +22,6 @@ void main()
     float freq = log2(cell.y) / (log2(22000.0) - log2(20.0));
     float amp = cell.x;
     
-    vec3 hsv = hsv2rgb(vec3(freq, 1.0, 1.0));
+    vec3 hsv = hsv2rgb(vec3(freq, 0.75, 1.0));
     color = vec4(hsv, amp);
 }

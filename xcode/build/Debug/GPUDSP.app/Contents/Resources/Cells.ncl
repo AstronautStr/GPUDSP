@@ -118,7 +118,7 @@ __kernel void kernelMain(__global DSPSampleType* samples, __global DSPSampleType
         int cellNextStepIndex = globalID + ((sampleIdx + 1) % bufferSize) * gridSize.x * gridSize.y;
 
         DSPSampleType newAmp = clamp(cell.x + deltaValue * deltaSign, 0.0f, 1.0f);
-        DSPSampleType randFreqMask = floor(1.0f - newAmp);
+        DSPSampleType randFreqMask = 0.0f;//floor(1.0f - newAmp);
         cells[cellNextStepIndex].x = newAmp;
         cells[cellNextStepIndex].y = cell.y * (1 - randFreqMask) + randFreq((DSPSampleType)((samplesProcessed % sampleRate + sampleIdx) % sampleRate) / (DSPSampleType)sampleRate) * randFreqMask;
         
