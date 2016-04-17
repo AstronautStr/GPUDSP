@@ -242,8 +242,8 @@ void AnotherSandboxProjectApp::setup()
     const size_t audioBuffersInGPUBuffer = 1;
     const size_t GPUBuffersInRingBuffer = 1;
 #else
-    const size_t audioBuffersInGPUBuffer = 3;
-    const size_t GPUBuffersInRingBuffer = 2;
+    const size_t audioBuffersInGPUBuffer = 4;
+    const size_t GPUBuffersInRingBuffer = 3;
 #endif
 #if OPENCL
     _DSPController = new DSPOpenCL(sampleRate, bufferSize * audioBuffersInGPUBuffer * GPUBuffersInRingBuffer);
