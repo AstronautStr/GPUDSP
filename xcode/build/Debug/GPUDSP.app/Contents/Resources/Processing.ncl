@@ -41,12 +41,11 @@ void processingFloat(__global DSPSampleType* samples, __global DSPSampleType* wa
     for (int i = 0; i < size; ++i)
         power += fabs(cells[i + globalID * size].x);
     
-    for (int i = 0; i < size; ++i)
-    {
-        samples[globalID] += cells[i + globalID * size].z / power;
-    }
+    power += clamp(1.0f - power, 0.0f, 1.0f);
     
-    samples[globalID] = samples[globalID];
+    for (int i = 0; i < size; ++i)
+        samples[globalID] += cells[i + globalID * size].z / power;
+    
 }
 
 __kernel void kernelMain(__global DSPSampleType* samples, __global DSPSampleType* waveTable, uint sampleRate, uint samplesProcessed, uint bufferSize, __global DSPSampleType4* cells, __global DSPSampleType* rules, uint2 gridSize)

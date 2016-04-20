@@ -104,7 +104,7 @@ __kernel void kernelMain(__global DSPSampleType* samples, __global DSPSampleType
         }
         
         DSPSampleType deltaSign = -1.0f;
-        DSPSampleType deltaValue = rules[4] / (DSPSampleType)sampleRate;
+        DSPSampleType deltaValue = pown(2.0f, -1 * (int)(log2((DSPSampleType)sampleRate)));//rules[4] / (DSPSampleType)sampleRate;
         DSPSampleType rulesBirthCenter = rules[0];
         DSPSampleType rulesBirthRadius = rules[1];
         DSPSampleType rulesKeepCenter = rules[2];
@@ -118,7 +118,7 @@ __kernel void kernelMain(__global DSPSampleType* samples, __global DSPSampleType
         int cellNextStepIndex = globalID + ((sampleIdx + 1) % bufferSize) * gridSize.x * gridSize.y;
 
         DSPSampleType newAmp = clamp(cell.x + deltaValue * deltaSign, 0.0f, 1.0f);
-        DSPSampleType randFreqMask = 0.0f;//floor(1.0f - newAmp);
+        DSPSampleType randFreqMask = floor(1.0f - newAmp);
         cells[cellNextStepIndex].x = newAmp;
         cells[cellNextStepIndex].y = cell.y * (1 - randFreqMask) + randFreq((DSPSampleType)((samplesProcessed % sampleRate + sampleIdx) % sampleRate) / (DSPSampleType)sampleRate) * randFreqMask;
         

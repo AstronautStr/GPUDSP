@@ -246,7 +246,7 @@ protected:
         waveTableMemoryLength = sampleRate;
         waveTable = new DSPSampleType[waveTableMemoryLength];
         for (int i = 0; i < sampleRate; ++i)
-            waveTable[i] = (DSPSampleType)(sin(2.0 * M_PI * (double)i / (double)sampleRate));
+            waveTable[i] = (DSPSampleType)(sin(2.0 * M_PI * ((double)i + 0.5) / (double)sampleRate));
         waveTableMemoryObj = clCreateBuffer(context, CL_MEM_READ_WRITE, waveTableMemoryLength * sizeof(DSPSampleType), NULL, &ret);
         logErrorString(ret);
         ret = clEnqueueWriteBuffer(commandQueue, waveTableMemoryObj, CL_TRUE, 0, waveTableMemoryLength * sizeof(DSPSampleType), waveTable, 0, NULL, NULL);
@@ -411,7 +411,7 @@ public:
     
     DSPSampleType4* getCurrentGridState()
     {
-        return &cells[cellsCount * (bufferSize - 1)];
+        return &cells[cellsCount * (samplesToWrite - 1)];
     }
     
     glm::ivec2 getGridSize()
