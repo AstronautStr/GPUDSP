@@ -7,10 +7,9 @@
 #include "cinder/params/Params.h"
 #include "Utils.h"
 
-#define OPENCL 1
-
-#define UNSAFEBUFFER 1
-#define FIXEDBUFFER 0
+#define OPENCL          1
+#define UNSAFEBUFFER    1
+#define FIXEDBUFFER     0
 
 #if OPENCL
 #include "DSPOpenCL.h"
@@ -98,6 +97,7 @@ protected:
     
     void _clearField();
     void _randomField();
+    void _randomAll();
     
   public:
     ~AnotherSandboxProjectApp();
@@ -290,6 +290,15 @@ void AnotherSandboxProjectApp::_randomField()
         _DSPController->DefferedUpdateGrid[i].s[1] = randFreq();
     }
 }
+void AnotherSandboxProjectApp::_randomAll()
+{
+    *_DSPController->getRulesBirthCenter() = -10.0 + (float)rand() / RAND_MAX * 20.0;
+    *_DSPController->rulesBirthRadius() = (float)rand() / RAND_MAX * 5.0;
+    *_DSPController->rulesKeepCenter() = -10.0 + (float)rand() / RAND_MAX * 20.0;
+    *_DSPController->rulesKeepRadius() = (float)rand() / RAND_MAX * 5.0;
+    
+    _randomField();
+}
 
 void AnotherSandboxProjectApp::modifyCell(vec2 screenPos, float value)
 {
@@ -317,6 +326,7 @@ void AnotherSandboxProjectApp::keyDown( KeyEvent event )
             break;
             
         case KeyEvent::KEY_q:
+            _randomAll();
             break;
             
         case KeyEvent::KEY_s:

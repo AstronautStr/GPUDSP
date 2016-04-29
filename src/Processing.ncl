@@ -35,6 +35,8 @@ void processingFloat(__global DSPSampleType* samples, __global DSPSampleType* wa
 {
     uint globalID = get_global_id(0);
     uint size = gridSize.x * gridSize.y;
+    //osc(samples, waveTable, sampleRate, samplesProcessed, 40.0f);
+    //samples[globalID] = 2.0f * ((float)(60 * (samplesProcessed + globalID) % sampleRate) / (float)sampleRate) - 1.0f;
     
     samples[globalID] = 0.0f;
     DSPSampleType power = 0.0f;
@@ -45,7 +47,6 @@ void processingFloat(__global DSPSampleType* samples, __global DSPSampleType* wa
     
     for (int i = 0; i < size; ++i)
         samples[globalID] += cells[i + globalID * size].z / power;
-    
 }
 
 __kernel void kernelMain(__global DSPSampleType* samples, __global DSPSampleType* waveTable, uint sampleRate, uint samplesProcessed, uint bufferSize, __global DSPSampleType4* cells, __global DSPSampleType* rules, uint2 gridSize)

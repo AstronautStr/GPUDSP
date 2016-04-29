@@ -57,7 +57,7 @@ DSPSampleType rand(DSPSampleType2 co)
 DSPSampleType randFreq(DSPSampleType fractTime)
 {
     DSPSampleType min = 20.0f;
-    DSPSampleType max = 22000.0f;
+    DSPSampleType max = 10000.0f;
     return pow(2.0f, (log2(min) + (log2(max) - log2(min)) * rand((DSPSampleType2)(fractTime, 1.3217f))));
 }
 
@@ -104,7 +104,7 @@ __kernel void kernelMain(__global DSPSampleType* samples, __global DSPSampleType
         }
         
         DSPSampleType deltaSign = -1.0f;
-        DSPSampleType deltaValue = pown(2.0f, -1 * (int)(log2((DSPSampleType)sampleRate)));//rules[4] / (DSPSampleType)sampleRate;
+        DSPSampleType deltaValue = rules[4] / (DSPSampleType)sampleRate;
         DSPSampleType rulesBirthCenter = rules[0];
         DSPSampleType rulesBirthRadius = rules[1];
         DSPSampleType rulesKeepCenter = rules[2];
