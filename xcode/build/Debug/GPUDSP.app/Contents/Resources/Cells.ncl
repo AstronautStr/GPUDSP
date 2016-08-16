@@ -59,6 +59,7 @@ DSPSampleType randFreq(DSPSampleType fractTime)
     DSPSampleType min = 20.0f;
     DSPSampleType max = 22000.0f;
     return pow(2.0f, (log2(min) + (log2(max) - log2(min)) * rand((DSPSampleType2)(fractTime, 1.3217f))));
+    //return 60.0f - 0.0625f + 0.125f * (rand((DSPSampleType2)(fractTime, 1.3217f)));
 }
 
 __kernel void kernelMain(__global DSPSampleType* samples, __global DSPSampleType* waveTable, uint sampleRate, uint samplesProcessed, uint bufferSize, __global DSPSampleType4* cells, __global DSPSampleType* rules, uint2 gridSize)
@@ -76,15 +77,15 @@ __kernel void kernelMain(__global DSPSampleType* samples, __global DSPSampleType
         uint cellIndex = sampleIdx * gridSize.x * gridSize.y + globalID;
         
         DSPSampleType4 cell = cells[cellIndex];
-        DSPSampleType signal = cell.x * waveTableOsc(waveTable, cell.y, sampleRate, samplesProcessed, sampleIdx);
+        /*DSPSampleType signal = cell.x * waveTableOsc(waveTable, cell.y, sampleRate, samplesProcessed, sampleIdx);
         cells[cellIndex].z = signal;
         
-        barrier(CLK_GLOBAL_MEM_FENCE);
+        barrier(CLK_GLOBAL_MEM_FENCE);*/
         
         globalID = get_global_id(0);
         cellIndex = sampleIdx * gridSize.x * gridSize.y + globalID;
 
-        cell = cells[cellIndex];
+        //cell = cells[cellIndex];
         cellPosition = (uint2)(globalID / gridSize.y, globalID % gridSize.y);
         
         DSPSampleType sum = 0.0f;
@@ -99,12 +100,14 @@ __kernel void kernelMain(__global DSPSampleType* samples, __global DSPSampleType
                 uint2 broIdx = torIndex((int2)cellPosition + (int2)(i, j), gridSize);
                 DSPSampleType4 bro = cells[(broIdx.x * gridSize.y + broIdx.y) + sampleIdx * gridSize.x * gridSize.y];
                 
-                sum += bro.x * bro.z;
+                sum += bro.x;
+                //sum += bro.x * bro.z;
             }
         }
         
         DSPSampleType deltaSign = -1.0f;
-        DSPSampleType deltaValue = rules[4] / (DSPSampleType)sampleRate;
+        //DSPSampleType deltaValue = rules[4] / (DSPSampleType)sampleRate;
+        DSPSampleType deltaValue = rules[4];
         DSPSampleType rulesBirthCenter = rules[0];
         DSPSampleType rulesBirthRadius = rules[1];
         DSPSampleType rulesKeepCenter = rules[2];
@@ -117,11 +120,13 @@ __kernel void kernelMain(__global DSPSampleType* samples, __global DSPSampleType
         
         int cellNextStepIndex = globalID + ((sampleIdx + 1) % bufferSize) * gridSize.x * gridSize.y;
 
-        DSPSampleType newAmp = clamp(cell.x + deltaValue * deltaSign, 0.0f, 1.0f);
-        DSPSampleType randFreqMask = 0.0f;//floor(1.0f - newAmp);
+        /*DSPSampleType newAmp = clamp(cell.x + deltaValue * deltaSign, 0.0f, 1.0f);
+        DSPSampleType randFreqMask = floor(1.0f - newAmp);
         cells[cellNextStepIndex].x = newAmp;
-        cells[cellNextStepIndex].y = cell.y * (1 - randFreqMask) + randFreq((DSPSampleType)((samplesProcessed % sampleRate + sampleIdx) % sampleRate) / (DSPSampleType)sampleRate) * randFreqMask;
         
+        cells[cellNextStepIndex].y = pow(2.0f, log2(cell.y) + deltaValue * deltaSign * 0.125f) * (1.0f - randFreqMask) + randFreq((DSPSampleType)((samplesProcessed % sampleRate + sampleIdx) % sampleRate) / (DSPSampleType)sampleRate) * randFreqMask;
+        */
+        cells[cellNextStepIndex].x = clamp(cell.x + deltaSign * deltaValue, 0.0f, 1.0f);
         barrier(CLK_GLOBAL_MEM_FENCE);
     }
 }

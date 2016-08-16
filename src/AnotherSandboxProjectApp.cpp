@@ -7,10 +7,9 @@
 #include "cinder/params/Params.h"
 #include "Utils.h"
 
-#define OPENCL 1
-
-#define UNSAFEBUFFER 1
-#define FIXEDBUFFER 0
+#define OPENCL          1
+#define UNSAFEBUFFER    1
+#define FIXEDBUFFER     0
 
 #if OPENCL
 #include "DSPOpenCL.h"
@@ -242,7 +241,7 @@ void AnotherSandboxProjectApp::setup()
     const size_t audioBuffersInGPUBuffer = 1;
     const size_t GPUBuffersInRingBuffer = 1;
 #else
-    const size_t audioBuffersInGPUBuffer = 4;
+    const size_t audioBuffersInGPUBuffer = 8;
     const size_t GPUBuffersInRingBuffer = 3;
 #endif
 #if OPENCL
@@ -255,7 +254,7 @@ void AnotherSandboxProjectApp::setup()
     ci::audio::GainNodeRef gainNode = ctx->makeNode(new GainNode(1.0));
     
     externalDSPNode >> gainNode >> outputNode;
-    
+     
     externalDSPNode->enable();
     outputNode->enable();
     
@@ -266,7 +265,7 @@ void AnotherSandboxProjectApp::setup()
     _params.addParam("Rules: Birth radius", _DSPController->rulesBirthRadius(), "min=0.0 max=10.0 step=0.001");
     _params.addParam("Rules: Keep center", _DSPController->rulesKeepCenter(), "min=-10.0 max=10.0 step=0.001");
     _params.addParam("Rules: Keep radius", _DSPController->rulesKeepRadius(), "min=0.0 max=10.0 step=0.001");
-    _params.addParam("Rules: Speed", _DSPController->rulesSpeed(), "min=0.0 max=1.0 step=0.001");
+    _params.addParam("Rules: Speed", _DSPController->rulesSpeed(), "min=0.0 max=16.0 step=0.001");
     
 #if !FIXEDBUFFER
     _DSPController->generateSamples();
@@ -382,7 +381,7 @@ void AnotherSandboxProjectApp::update()
 void AnotherSandboxProjectApp::draw()
 {
     gl::clear( Color( 0, 0, 0 ) );
-
+    
     glUseProgram(_drawingProgram);
     glBindVertexArray(_drawingVAO);
     glBindBuffer(GL_ARRAY_BUFFER, _drawingVBO);

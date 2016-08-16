@@ -36,16 +36,34 @@ void processingFloat(__global DSPSampleType* samples, __global DSPSampleType* wa
     uint globalID = get_global_id(0);
     uint size = gridSize.x * gridSize.y;
     
-    samples[globalID] = 0.0f;
     DSPSampleType power = 0.0f;
+    samples[globalID] = 0.0f;
+    
+    DSPSampleType perr = 0.0f;
+    DSPSampleType serr = 0.0f;
     for (int i = 0; i < size; ++i)
     {
-        power += fabs(cells[i + globalID * size].x);
-        samples[globalID] += cells[0 + globalID * size].z;
+        /*
+        float pval = fabs(cells[i + globalID * size].x) - perr;
+        float psum = power + pval;
+        perr = (psum - power) - pval;
+        power = psum;
+        
+        float sval = cells[i + globalID * size].z - serr;
+        float ssum = samples[globalID] + sval;
+        serr = (ssum - samples[globalID]) - sval;
+        samples[globalID] = ssum;
+         */
+        DSPSampleType value = cells[i + globalID * size].x;
+        DSPSampleType sval = value - serr;
+        DSPSampleType ssum = samples[globalID] + sval;
+        serr = (ssum - samples[globalID]) - sval;
+        samples[globalID] = ssum;
     }
     
-    power += clamp(1.0f - power, 0.0f, 1.0f);
-    samples[globalID] = samples[globalID] / power;
+    samples[globalID] = samples[globalID] / DSPSampleType(size);
+    //power += clamp(1.0f - power, 0.0f, 1.0f);
+    //samples[globalID] = samples[globalID] / power;
 }
 
 __kernel void kernelMain(__global DSPSampleType* samples, __global DSPSampleType* waveTable, uint sampleRate, uint samplesProcessed, uint bufferSize, __global DSPSampleType4* cells, __global DSPSampleType* rules, uint2 gridSize)

@@ -255,11 +255,21 @@ protected:
         rulesMemoryObject = NULL;
         rulesMemoryLength = 5;
         rules = new cl_float[rulesMemoryLength];
-        rules[0] = 0.7f;
+        /*rules[0] = 0.7f;
         rules[1] = 0.5f;
         rules[2] = -0.7f;
         rules[3] = 0.265f;
-        rules[4] = 1.0f;
+        rules[4] = 1.0f;*/
+        /*_rulesBirthCenter = new UniformLink(_CAProgram, "rulesBirthCenter", 1.89);
+        _rulesBirthRadius = new UniformLink(_CAProgram, "rulesBirthRadius", 0.35);
+        _rulesKeepCenter = new UniformLink(_CAProgram, "rulesKeepCenter", 1.89);
+        _rulesKeepRadius = new UniformLink(_CAProgram, "rulesKeepRadius", 0.36);
+        _rulesDelta = new UniformLink(_CAProgram, "rulesDelta", 0.0625);*/
+        rules[0] = 1.707;
+        rules[1] = 2.286;
+        rules[2] = 0.0;
+        rules[3] = 0.0;
+        rules[4] = 0.009;
         rulesMemoryObject = clCreateBuffer(context, CL_MEM_READ_WRITE, rulesMemoryLength * sizeof(cl_float), NULL, &ret);
         logErrorString(ret);
         ret = clEnqueueWriteBuffer(commandQueue, rulesMemoryObject, CL_TRUE, 0, rulesMemoryLength * sizeof(cl_float), rules, 0, NULL, NULL);
@@ -283,7 +293,7 @@ protected:
         for (int i = 0; i < cellsCount; ++i)
         {
             cells[i].s[0] = randAmp();
-            cells[i].s[1] = randFreq();
+            //cells[i].s[1] = randFreq();
         }
         
         cellsMemoryObj = clCreateBuffer(context, CL_MEM_READ_WRITE, cellsMemoryLength * sizeof(DSPSampleType4), NULL, &ret);
@@ -326,7 +336,7 @@ protected:
             float clearMask = DefferedUpdateGrid[i].s[0] < 0.0f ? 1.0f : 0.0f;
             
 #if LOGENABLED
-            bool log = false;
+            bool log = true;
             if (replaceMask == 1.0)
             {
                 log = true;
@@ -411,7 +421,7 @@ public:
     
     DSPSampleType4* getCurrentGridState()
     {
-        return &cells[cellsCount * (bufferSize - 1)];
+        return &cells[0];
     }
     
     glm::ivec2 getGridSize()
