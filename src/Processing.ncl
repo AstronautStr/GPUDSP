@@ -61,7 +61,7 @@ void processingFloat(__global DSPSampleType* samples, __global DSPSampleType* wa
         samples[globalID] = ssum;
     }
     
-    samples[globalID] = samples[globalID] / DSPSampleType(size);
+    samples[globalID] = (samples[globalID] / DSPSampleType(size)) * 2.0 - 1.0;
     //power += clamp(1.0f - power, 0.0f, 1.0f);
     //samples[globalID] = samples[globalID] / power;
 }

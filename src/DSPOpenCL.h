@@ -147,6 +147,8 @@ protected:
     cl_uint             samplesToWrite;
     size_t              bufferSize;
     
+    bool                isPaused;
+    
     void _prepareContext()
     {
         cl_platform_id platformID;
@@ -264,12 +266,17 @@ protected:
         _rulesBirthRadius = new UniformLink(_CAProgram, "rulesBirthRadius", 0.35);
         _rulesKeepCenter = new UniformLink(_CAProgram, "rulesKeepCenter", 1.89);
         _rulesKeepRadius = new UniformLink(_CAProgram, "rulesKeepRadius", 0.36);
-        _rulesDelta = new UniformLink(_CAProgram, "rulesDelta", 0.0625);*/
-        rules[0] = 1.707;
-        rules[1] = 2.286;
-        rules[2] = 0.0;
-        rules[3] = 0.0;
-        rules[4] = 0.009;
+        _rulesDelta = new UniformLink(_CAProgram, "rulesDelta", 0.0625);
+        0.0625;//rules[4];
+        DSPSampleType rulesBirthCenter = 2.0;//rules[0];
+        DSPSampleType rulesBirthRadius = 0.32;//rules[1];
+        DSPSampleType rulesKeepCenter = 1.84;//rules[2];
+        DSPSampleType rulesKeepRadius = 0.4;*/
+        rules[0] = 1.89;
+        rules[1] = 0.35;
+        rules[2] = 1.89;
+        rules[3] = 0.36;
+        rules[4] = 0.0625;
         rulesMemoryObject = clCreateBuffer(context, CL_MEM_READ_WRITE, rulesMemoryLength * sizeof(cl_float), NULL, &ret);
         logErrorString(ret);
         ret = clEnqueueWriteBuffer(commandQueue, rulesMemoryObject, CL_TRUE, 0, rulesMemoryLength * sizeof(cl_float), rules, 0, NULL, NULL);
@@ -336,7 +343,7 @@ protected:
             float clearMask = DefferedUpdateGrid[i].s[0] < 0.0f ? 1.0f : 0.0f;
             
 #if LOGENABLED
-            bool log = true;
+            bool log = false;
             if (replaceMask == 1.0)
             {
                 log = true;
@@ -378,6 +385,7 @@ public:
         _prepareKernel(&cellsKernel, "Cells.ncl");
         _prepareKernel(&soundKernel, "Processing.ncl");
         _prepareMemory();
+        isPaused = false;
     }
     
     float* getRulesBirthCenter()
@@ -419,6 +427,11 @@ public:
         clReleaseKernel(soundKernel);
     }
     
+    bool pause()
+    {
+        isPaused = !isPaused;
+    }
+    
     DSPSampleType4* getCurrentGridState()
     {
         return &cells[0];
@@ -436,6 +449,9 @@ public:
     
     void generateSamples(float* data = NULL)
     {
+        if (isPaused)
+            return;
+        
         size_t toWrite = _getBufferToWrite();
         
         if (toWrite <= 0)

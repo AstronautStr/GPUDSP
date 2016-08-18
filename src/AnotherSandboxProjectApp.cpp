@@ -175,7 +175,12 @@ void AnotherSandboxProjectApp::_updateGridState()
     const DSPSampleType4* gridState = _DSPController->getCurrentGridState();
     for (size_t i = 0; i < _gridBufferLength; ++i)
     {
-        _gridData[i] = (GLfloat)gridState[i / _cellAttribCount].s[i % _cellAttribCount];
+        int index = i / _cellAttribCount;
+        _gridData[i] = (GLfloat)gridState[index].s[i % _cellAttribCount];
+        bool replaceMask = _DSPController->DefferedUpdateGrid[index].s[0] > 0.0f ? 1.0f : 0.0f;
+        bool clearMask = _DSPController->DefferedUpdateGrid[index].s[0] < 0.0f ? 1.0f : 0.0f;
+        if (replaceMask || clearMask)
+            _gridData[i] = _DSPController->DefferedUpdateGrid[index].s[i % _cellAttribCount];
     }
 
     glBindBuffer(GL_ARRAY_BUFFER, _gridBuffer);
@@ -266,7 +271,7 @@ void AnotherSandboxProjectApp::setup()
     _params.addParam("Rules: Birth radius", _DSPController->rulesBirthRadius(), "min=0.0 max=10.0 step=0.001");
     _params.addParam("Rules: Keep center", _DSPController->rulesKeepCenter(), "min=-10.0 max=10.0 step=0.001");
     _params.addParam("Rules: Keep radius", _DSPController->rulesKeepRadius(), "min=0.0 max=10.0 step=0.001");
-    _params.addParam("Rules: Speed", _DSPController->rulesSpeed(), "min=0.0 max=16.0 step=0.001");
+    _params.addParam("Rules: Speed", _DSPController->rulesSpeed(), "min=0.0 max=16.0 step=1.000");
     
 #if !FIXEDBUFFER
     _DSPController->generateSamples();
@@ -315,6 +320,7 @@ void AnotherSandboxProjectApp::keyDown( KeyEvent event )
     switch (event.getCode())
     {
         case KeyEvent::KEY_SPACE:
+            _DSPController->pause();
             break;
             
         case KeyEvent::KEY_c:
@@ -330,6 +336,16 @@ void AnotherSandboxProjectApp::keyDown( KeyEvent event )
             break;
             
         case KeyEvent::KEY_s:
+        {
+            _clearField();
+            ivec2 gridSize = _DSPController->getGridSize();
+            ivec2 center = gridSize / 2;
+            int centerIndex = center.x * gridSize.y + center.y;
+            _DSPController->DefferedUpdateGrid[centerIndex].s[0] = (DSPSampleType)1.0;
+            _DSPController->DefferedUpdateGrid[centerIndex - 1].s[0] = (DSPSampleType)1.0;
+            _DSPController->DefferedUpdateGrid[centerIndex - 1 * gridSize.y].s[0] = (DSPSampleType)1.0;
+            _DSPController->DefferedUpdateGrid[centerIndex - 2 * gridSize.y].s[0] = (DSPSampleType)1.0;
+        }
             break;
             
         case KeyEvent::KEY_l:
